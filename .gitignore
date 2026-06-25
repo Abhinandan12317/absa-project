@@ -15,3 +15,4 @@ models_saved/
 data/raw/reviews.csv
 
 mongo_backup/
+data/processed/
