@@ -1,0 +1,24 @@
+{
+  "total_reviews": 22640,
+  "reviews_with_aspects": 20288,
+  "sentiment_distribution": {
+    "Positive": 17447,
+    "Neutral": 2823,
+    "Negative": 2370
+  },
+  "rating_distribution": {
+    "1": 821,
+    "2": 1549,
+    "3": 2823,
+    "4": 4908,
+    "5": 12539
+  },
+  "aspect_coverage": {
+    "SIZE": 15544,
+    "FABRIC": 11002,
+    "STITCHING": 2240,
+    "COLOR": 6934,
+    "PRICE": 2161,
+    "DELIVERY": 798
+  }
+}
