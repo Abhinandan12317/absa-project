@@ -1,0 +1,119 @@
+D:\absa_project\
+│
+├── data\
+│   ├── raw\
+│   │   └── reviews.csv                  ← Kaggle dataset
+│   └── processed\
+│       ├── reviews_processed.csv        ← after preprocessing
+│       ├── model_ready.csv              ← for ML training
+│       ├── absa_ready.csv               ← for ABSA module
+│       └── dataset_stats.json           ← statistics
+│
+├── src\
+│   ├── preprocessing\
+│   │   └── text_preprocessor.py         ← DONE ✅
+│   │
+│   ├── models\
+│   │   ├── logistic_regression.py       ← LR model
+│   │   ├── svm_model.py                 ← SVM model
+│   │   ├── cnn_bilstm.py                ← CNN-BiLSTM model
+│   │   └── distilbert_model.py          ← DistilBERT model
+│   │
+│   ├── absa\
+│   │   ├── aspect_detector.py           ← detects aspects
+│   │   └── absa_pipeline.py             ← full ABSA pipeline
+│   │
+│   ├── evaluation\
+│   │   └── evaluator.py                 ← accuracy, F1, confusion matrix
+│   │
+│   └── api\
+│       └── main.py                      ← FastAPI backend
+│
+├── models_saved\                        ← trained models saved here
+│   ├── lr_model.pkl
+│   ├── svm_model.pkl
+│   ├── tfidf_vectorizer.pkl
+│   ├── cnn_bilstm.pt
+│   └── distilbert_finetuned\
+│
+├── frontend\                            ← React dashboard
+│   ├── src\
+│   │   ├── components\
+│   │   │   ├── ReviewInput.jsx
+│   │   │   ├── SentimentChart.jsx
+│   │   │   ├── AspectHeatmap.jsx
+│   │   │   └── ModelComparison.jsx
+│   │   ├── App.jsx
+│   │   └── index.js
+│   └── package.json
+│
+├── outputs\                             ← charts, reports saved here
+│
+├── notebooks\                           ← for testing/experiments
+│   └── exploration.ipynb
+│
+├── data_pipeline.py                     ← CREATED ✅ runs preprocessing
+├── train_models.py                      ← runs all model training
+├── evaluate_models.py                   ← runs evaluation
+├── requirements.txt                     ← all dependencies
+└── README.md                            ← project documentation
+
+
+
+
+Complete Tech Stack
+🗄️ Database
+
+MongoDB — stores reviews, analysis results, model outputs
+We'll use MongoDB Atlas (free cloud version, no installation needed)
+
+
+🧠 ML / DL Models
+ModelLibraryLogistic Regressionscikit-learnSVMscikit-learnCNN-BiLSTMPyTorchDistilBERTHuggingFace Transformers
+
+📝 NLP Libraries
+PurposeLibraryTokenization, Stopwords, LemmatizationNLTKText processingspaCyTF-IDF featuresscikit-learnGloVe embeddingsdownloaded separatelyDistilBERT tokenizerHuggingFace Transformers
+
+⚙️ Backend
+
+FastAPI — Python backend
+Uvicorn — server to run FastAPI
+Connects frontend → models → database
+
+
+🎨 Frontend
+
+React.js — UI framework
+Tailwind CSS — styling
+Plotly.js — charts and visualizations
+Charts we'll build:
+
+Sentiment distribution donut chart
+Aspect-wise heatmap
+Model comparison table
+Word cloud
+
+
+
+
+🔧 Other Tools
+PurposeToolIDEVS CodeVersion controlGitAPI testingPostmanNotebooksJupyter
+
+How They All Connect
+User types review
+      ↓
+React Frontend
+      ↓
+FastAPI Backend
+      ↓
+NLP Preprocessing (NLTK)
+      ↓
+Model Inference (sklearn/PyTorch/HuggingFace)
+      ↓
+ABSA Module
+      ↓
+Results stored in MongoDB
+      ↓
+Results sent back to React
+      ↓
+Charts displayed to user

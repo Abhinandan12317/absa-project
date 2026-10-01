@@ -1,0 +1,18 @@
+# Node modules
+frontend/node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+env/
+
+# Heavy files — share via Google Drive
+models_saved/
+data/raw/reviews.csv
+
+mongo_backup/
+data/processed/

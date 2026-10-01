@@ -1,0 +1,272 @@
+{
+  "generated_at": "2026-06-19T18:00:50.688086",
+  "dataset": "Women's Clothing E-Commerce Reviews (Kaggle)",
+  "total_records": 23486,
+  "test_split": "20%",
+  "classes": [
+    "NEGATIVE",
+    "NEUTRAL",
+    "POSITIVE"
+  ],
+  "models": {
+    "Logistic Regression": {
+      "accuracy": 81.87,
+      "precision_macro": 77.94,
+      "recall_macro": 81.87,
+      "f1_macro": 78.52,
+      "test_samples": 4528,
+      "correct": 3707,
+      "incorrect": 821,
+      "confusion_matrix": [
+        [
+          183,
+          83,
+          208
+        ],
+        [
+          79,
+          100,
+          386
+        ],
+        [
+          13,
+          52,
+          3424
+        ]
+      ],
+      "per_class": {
+        "NEGATIVE": {
+          "precision": 0.6655,
+          "recall": 0.3861,
+          "f1": 0.4887,
+          "support": 474,
+          "tp": 183,
+          "fp": 92,
+          "fn": 291,
+          "tn": 3962
+        },
+        "NEUTRAL": {
+          "precision": 0.4255,
+          "recall": 0.177,
+          "f1": 0.25,
+          "support": 565,
+          "tp": 100,
+          "fp": 135,
+          "fn": 465,
+          "tn": 3828
+        },
+        "POSITIVE": {
+          "precision": 0.8522,
+          "recall": 0.9814,
+          "f1": 0.9122,
+          "support": 3489,
+          "tp": 3424,
+          "fp": 594,
+          "fn": 65,
+          "tn": 445
+        }
+      }
+    },
+    "SVM": {
+      "accuracy": 82.31,
+      "precision_macro": 79.24,
+      "recall_macro": 82.31,
+      "f1_macro": 80.23,
+      "test_samples": 4528,
+      "correct": 3727,
+      "incorrect": 801,
+      "confusion_matrix": [
+        [
+          228,
+          100,
+          146
+        ],
+        [
+          110,
+          134,
+          321
+        ],
+        [
+          39,
+          85,
+          3365
+        ]
+      ],
+      "per_class": {
+        "NEGATIVE": {
+          "precision": 0.6048,
+          "recall": 0.481,
+          "f1": 0.5358,
+          "support": 474,
+          "tp": 228,
+          "fp": 149,
+          "fn": 246,
+          "tn": 3905
+        },
+        "NEUTRAL": {
+          "precision": 0.4201,
+          "recall": 0.2372,
+          "f1": 0.3032,
+          "support": 565,
+          "tp": 134,
+          "fp": 185,
+          "fn": 431,
+          "tn": 3778
+        },
+        "POSITIVE": {
+          "precision": 0.8781,
+          "recall": 0.9645,
+          "f1": 0.9193,
+          "support": 3489,
+          "tp": 3365,
+          "fp": 467,
+          "fn": 124,
+          "tn": 572
+        }
+      }
+    },
+    "DistilBERT": {
+      "accuracy": 85.27,
+      "precision_macro": 84.88,
+      "recall_macro": 85.27,
+      "f1_macro": 85.07,
+      "test_samples": 4528,
+      "correct": 3861,
+      "incorrect": 667,
+      "confusion_matrix": [
+        [
+          303,
+          132,
+          39
+        ],
+        [
+          145,
+          245,
+          175
+        ],
+        [
+          24,
+          152,
+          3313
+        ]
+      ],
+      "per_class": {
+        "NEGATIVE": {
+          "precision": 0.6419,
+          "recall": 0.6392,
+          "f1": 0.6406,
+          "support": 474,
+          "tp": 303,
+          "fp": 169,
+          "fn": 171,
+          "tn": 3885
+        },
+        "NEUTRAL": {
+          "precision": 0.4631,
+          "recall": 0.4336,
+          "f1": 0.4479,
+          "support": 565,
+          "tp": 245,
+          "fp": 284,
+          "fn": 320,
+          "tn": 3679
+        },
+        "POSITIVE": {
+          "precision": 0.9393,
+          "recall": 0.9496,
+          "f1": 0.9444,
+          "support": 3489,
+          "tp": 3313,
+          "fp": 214,
+          "fn": 176,
+          "tn": 825
+        }
+      }
+    },
+    "CNN-BiLSTM": {
+      "accuracy": 82.46,
+      "precision_macro": 80.13,
+      "recall_macro": 82.46,
+      "f1_macro": 81.07,
+      "test_samples": 4528,
+      "correct": 3734,
+      "incorrect": 794,
+      "confusion_matrix": [
+        [
+          235,
+          129,
+          110
+        ],
+        [
+          141,
+          156,
+          268
+        ],
+        [
+          32,
+          114,
+          3343
+        ]
+      ],
+      "per_class": {
+        "NEGATIVE": {
+          "precision": 0.576,
+          "recall": 0.4958,
+          "f1": 0.5329,
+          "support": 474,
+          "tp": 235,
+          "fp": 173,
+          "fn": 239,
+          "tn": 3881
+        },
+        "NEUTRAL": {
+          "precision": 0.391,
+          "recall": 0.2761,
+          "f1": 0.3237,
+          "support": 565,
+          "tp": 156,
+          "fp": 243,
+          "fn": 409,
+          "tn": 3720
+        },
+        "POSITIVE": {
+          "precision": 0.8984,
+          "recall": 0.9582,
+          "f1": 0.9273,
+          "support": 3489,
+          "tp": 3343,
+          "fp": 378,
+          "fn": 146,
+          "tn": 661
+        }
+      }
+    }
+  },
+  "ranking": [
+    {
+      "rank": 1,
+      "model": "DistilBERT",
+      "accuracy": 85.27,
+      "f1": 85.07
+    },
+    {
+      "rank": 2,
+      "model": "CNN-BiLSTM",
+      "accuracy": 82.46,
+      "f1": 81.07
+    },
+    {
+      "rank": 3,
+      "model": "SVM",
+      "accuracy": 82.31,
+      "f1": 80.23
+    },
+    {
+      "rank": 4,
+      "model": "Logistic Regression",
+      "accuracy": 81.87,
+      "f1": 78.52
+    }
+  ],
+  "best_model": "DistilBERT"
+}

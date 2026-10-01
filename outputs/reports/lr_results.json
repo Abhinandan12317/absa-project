@@ -1,0 +1,24 @@
+{
+  "model": "Logistic Regression",
+  "accuracy": 0.8187,
+  "precision": 0.7794,
+  "recall": 0.8187,
+  "f1_score": 0.7852,
+  "confusion_matrix": [
+    [
+      183,
+      83,
+      208
+    ],
+    [
+      79,
+      100,
+      386
+    ],
+    [
+      13,
+      52,
+      3424
+    ]
+  ]
+}

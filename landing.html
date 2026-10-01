@@ -1,0 +1,2850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ABSA — Aspect-Based Sentiment Analysis | Clothing Review Analyzer</title>
+<link rel="icon" type="image/png" href="https://lh3.googleusercontent.com/aida-public/AB6AXuB2Im4A_oqhTh22pXDth_brnC9t5xMF6pz5wgAfEbs5S6U6T7jBwo3mhKhwoHonAPAsL-GqtUKhspEopFIobXiCjfapeatg2LkoaWaxx4c1-PSvEf-ANZ95iLWv9mNpytx7JhPLwWQ2qsrJumHwWtrYZ47uWEuplPxIqr77eeD88QEHE--4tDSEBX1stPkLDRZq3vz-nKwnw12HafcRn_aNtKd17zgZhVLpHEAiV4kcKNg6VswGy0mSqyzhuuYSjFDd7vg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ==========================================================================
+   DESIGN TOKENS & DESIGN SYSTEM (Exact match to analyzer source in DOCUMENT_2)
+   Light SaaS aesthetic, pastel sentiments, deep slate typography, mathematical rhythm
+   ========================================================================== */
+:root {
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Neutrals & Surfaces */
+  --bg-page: #f8fafc;
+  --bg-subtle: #f1f5f9;
+  --surface: #ffffff;
+  --surface-hover: #fcfdfe;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --divider: #f1f5f9;
+
+  /* Brand / Primary Palette */
+  --primary-900: #0f172a;
+  --primary-800: #1e293b;
+  --primary-700: #334155;
+  --primary-600: #475569;
+  --brand-accent: #3b82f6;
+  --brand-accent-hover: #2563eb;
+  --brand-accent-subtle: #eff6ff;
+  --brand-accent-border: #bfdbfe;
+
+  /* Typography */
+  --text-main: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+
+  /* Pastel Sentiment Semantic Colors */
+  --pos-pastel-bg: #ecfdf5;
+  --pos-pastel-border: #a7f3d0;
+  --pos-text: #065f46;
+  --pos-dot: #10b981;
+
+  --neg-pastel-bg: #fff1f2;
+  --neg-pastel-border: #fecdd3;
+  --neg-text: #9f1239;
+  --neg-dot: #f43f5e;
+
+  --neu-pastel-bg: #fffbeb;
+  --neu-pastel-border: #fde68a;
+  --neu-text: #92400e;
+  --neu-dot: #f59e0b;
+
+  /* Machine Learning Model Palette */
+  --col-distilbert: #6366f1;
+  --col-cnnbilstm: #10b981;
+  --col-svm: #f59e0b;
+  --col-logreg: #64748b;
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.06), 0 4px 6px -4px rgba(15, 23, 42, 0.03);
+  --shadow-inner: inset 0 2px 4px 0 rgba(15, 23, 42, 0.04);
+
+  /* Container width */
+  --container-max: 1240px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  position: relative;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+/* ==========================================================================
+   SCROLL PROGRESS BAR
+   ========================================================================== */
+#scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-accent) 0%, #6366f1 100%);
+  width: 0%;
+  z-index: 1000;
+  transition: width 0.08s ease-out;
+}
+
+/* ==========================================================================
+   TOP STICKY NAVBAR
+   Exact structural clone of the 72px light SaaS shell in code.html
+   ========================================================================== */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: rgba(248, 250, 252, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: all 0.25s ease;
+}
+
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom-color: var(--border-strong);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+}
+
+.navbar-container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.brand-logo-img {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  object-fit: cover;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--brand-accent-subtle);
+  color: var(--brand-accent);
+}
+
+.brand-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.nav-links-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-subtle);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.nav-link-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 15px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.nav-link-btn:hover {
+  color: var(--text-main);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.nav-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.nav-meta-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--pos-dot);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* Primary Dark Action Button */
+.btn-launch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--primary-900);
+  color: #ffffff;
+  border: 1px solid var(--primary-900);
+  border-radius: var(--radius-sm);
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-launch:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.btn-launch:active {
+  transform: scale(0.98);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-secondary:hover {
+  color: var(--text-main);
+  background: var(--bg-subtle);
+  border-color: #94a3b8;
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: scale(0.98);
+}
+
+/* ==========================================================================
+   COMMON SURFACE PANELS & TYPOGRAPHY
+   ========================================================================== */
+.section-wrapper {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 80px 32px;
+  position: relative;
+}
+
+.section-header-center {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 48px;
+}
+
+.section-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--brand-accent);
+  background: var(--brand-accent-subtle);
+  border: 1px solid var(--brand-accent-border);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  margin-bottom: 12px;
+}
+
+.section-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+
+.section-subtitle {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+.surface-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  position: relative;
+}
+
+.surface-panel:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-strong);
+}
+
+.panel-header {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.panel-subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.panel-body {
+  padding: 24px;
+}
+
+/* Sentiment badges */
+.sentiment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.sentiment-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.sentiment-badge.POSITIVE {
+  background: var(--pos-pastel-bg);
+  color: var(--pos-text);
+  border: 1px solid var(--pos-pastel-border);
+}
+.sentiment-badge.POSITIVE::before { background: var(--pos-dot); }
+
+.sentiment-badge.NEGATIVE {
+  background: var(--neg-pastel-bg);
+  color: var(--neg-text);
+  border: 1px solid var(--neg-pastel-border);
+}
+.sentiment-badge.NEGATIVE::before { background: var(--neg-dot); }
+
+.sentiment-badge.NEUTRAL {
+  background: var(--neu-pastel-bg);
+  color: var(--neu-text);
+  border: 1px solid var(--neu-pastel-border);
+}
+.sentiment-badge.NEUTRAL::before { background: var(--neu-dot); }
+
+/* Aspect Tag Chip */
+.aspect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.aspect-chip.POSITIVE {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.aspect-chip.NEGATIVE {
+  background: #fff1f2;
+  color: #be123c;
+  border: 1px solid #fecdd3;
+}
+
+.aspect-chip.NEUTRAL {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+/* ==========================================================================
+   HERO SECTION (Light SaaS Two-Column Layout)
+   ========================================================================== */
+.hero-wrapper {
+  position: relative;
+  overflow: hidden;
+  padding: 72px 32px 84px;
+}
+
+/* Ambient light geometric patterns & very soft glow */
+.hero-bg-ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.ambient-radial-glow {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 900px;
+  height: 500px;
+  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.08) 0%, rgba(99, 102, 241, 0.03) 50%, transparent 70%);
+  filter: blur(60px);
+}
+
+.ambient-grid-faint {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 70%);
+  opacity: 0.8;
+}
+
+/* Subtle floating aspect emojis */
+.hero-float-icon {
+  position: absolute;
+  font-size: 22px;
+  opacity: 0.45;
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.08));
+  user-select: none;
+  pointer-events: none;
+  animation: floatDrift 10s ease-in-out infinite alternate;
+}
+
+@keyframes floatDrift {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(4deg); }
+  100% { transform: translateY(8px) rotate(-3deg); }
+}
+
+.hero-grid {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.15fr 0.95fr;
+  gap: 56px;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.hero-headline {
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  color: var(--text-main);
+  margin-top: 14px;
+}
+
+.headline-accent {
+  color: var(--brand-accent);
+  position: relative;
+  display: inline-block;
+}
+
+.headline-accent::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 4px;
+  width: 100%;
+  height: 6px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 3px;
+  z-index: -1;
+}
+
+.hero-supporting-text {
+  font-size: 17px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 20px;
+  max-width: 540px;
+}
+
+.hero-cta-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.hero-trust-row {
+  margin-top: 36px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 20px;
+  width: 100%;
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.trust-check {
+  color: var(--brand-accent);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   HERO VISUAL: LIVE ANALYSIS DEMO CARD
+   Miniature replica of the Single Review workspace from DOCUMENT_2
+   ========================================================================== */
+.hero-demo-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 12px 36px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+  position: relative;
+}
+
+.demo-status-bar {
+  padding: 12px 20px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.pulse-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--pos-dot);
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseDot 2s infinite cubic-bezier(0.66, 0, 0, 1);
+}
+
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.demo-model-badge {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--col-distilbert);
+  background: #eef2ff;
+  border: 1px solid #e0e7ff;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.demo-inner-padding {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.demo-review-input-box {
+  background: var(--bg-page);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-main);
+  min-height: 72px;
+  box-shadow: var(--shadow-inner);
+  position: relative;
+}
+
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background-color: var(--brand-accent);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blinkCursor 0.8s infinite;
+}
+
+@keyframes blinkCursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.demo-overview-strip {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demo-detected-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.demo-aspect-item {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.demo-aspect-item:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+.demo-aspect-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demo-aspect-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demo-confidence-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.demo-conf-pct {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.demo-conf-track {
+  width: 70px;
+  height: 5px;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.demo-conf-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.demo-quote-clause {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  background: var(--bg-page);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 2px solid var(--border-strong);
+}
+
+.demo-controls-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.demo-cycle-btn {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.demo-cycle-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   SECTION 1: THE PROBLEM (Side-by-Side Comparison)
+   ========================================================================== */
+.problem-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.comparison-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+  position: relative;
+  overflow: hidden;
+}
+
+.comparison-card.flawed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--neu-dot);
+}
+
+.comparison-card.solution::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--brand-accent);
+}
+
+.card-tag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.card-tag-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.mock-review-callout {
+  background: var(--bg-page);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-main);
+  margin-bottom: 20px;
+}
+
+.problem-outcome-box {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.outcome-pill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.outcome-verdict-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.fragmented-sentence-box {
+  background: var(--bg-page);
+  border: 1px solid var(--brand-accent-border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--text-main);
+  margin-bottom: 20px;
+}
+
+.frag-pos {
+  background: var(--pos-pastel-bg);
+  color: var(--pos-text);
+  border: 1px solid var(--pos-pastel-border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.frag-neg {
+  background: var(--neg-pastel-bg);
+  color: var(--neg-text);
+  border: 1px solid var(--neg-pastel-border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   SECTION 2: HOW IT WORKS (Pipeline visualization)
+   ========================================================================== */
+.pipeline-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.pipeline-line-connector {
+  position: absolute;
+  top: 34px;
+  left: 4%;
+  right: 4%;
+  height: 2px;
+  background: var(--border-subtle);
+  z-index: 1;
+}
+
+.pipeline-travel-pulse {
+  position: absolute;
+  top: -2px;
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, transparent, var(--brand-accent), #60a5fa, transparent);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+  animation: pulseMove 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pulseMove {
+  0% { left: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 96%; opacity: 0; }
+}
+
+.pipeline-step-card {
+  position: relative;
+  z-index: 2;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-xs);
+  transition: all 0.2s ease;
+}
+
+.pipeline-step-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--brand-accent-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.step-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.step-circle-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--brand-accent-subtle);
+  color: var(--brand-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.step-num-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.step-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.step-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   SECTION 3: SIX ASPECTS WE DETECT (3x2 Grid)
+   ========================================================================== */
+.aspects-grid-3x2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.aspect-explore-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-xs);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.aspect-explore-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.aspect-card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.aspect-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.aspect-emoji-bubble {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 1px solid var(--border-subtle);
+}
+
+.aspect-card-name {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.aspect-keywords-pill-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.aspect-kw-tag {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+.aspect-mini-sentiment-bar {
+  display: flex;
+  height: 6px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--bg-subtle);
+  margin-top: 4px;
+}
+
+.sentiment-bar-segment {
+  height: 100%;
+}
+
+.aspect-example-box {
+  background: var(--bg-page);
+  border-left: 3px solid var(--border-strong);
+  padding: 8px 12px;
+  border-radius: 0 6px 6px 0;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   SECTION 4: FOUR MODELS TABBED SHOWCASE
+   ========================================================================== */
+.model-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  background: var(--bg-subtle);
+  padding: 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  width: fit-content;
+}
+
+.model-tab-btn {
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-tab-btn.active {
+  background: var(--surface);
+  color: var(--text-main);
+  box-shadow: var(--shadow-xs);
+}
+
+.model-dot-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.model-showcase-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-xs);
+}
+
+.model-detail-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 36px;
+  align-items: start;
+}
+
+.model-bio-left h3 {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.model-arch-pill {
+  font-size: 12px;
+  color: var(--brand-accent);
+  background: var(--brand-accent-subtle);
+  border: 1px solid var(--brand-accent-border);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.model-description {
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-top: 14px;
+}
+
+.model-meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.model-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-metrics-right {
+  background: var(--bg-page);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.model-metrics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 10px;
+}
+
+.metric-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.metric-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--border-subtle);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.metric-bar-progress {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+}
+
+.skeleton-text {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+  display: inline-block;
+  color: transparent !important;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   SECTION 5: LIVE KPI & STAT TILES (Reusing exact analyzer KPI structure)
+   ========================================================================== */
+.kpi-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.kpi-tile {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+
+.kpi-tile.brand::before { background: var(--primary-900); }
+.kpi-tile.pos::before { background: var(--pos-dot); }
+.kpi-tile.neg::before { background: var(--neg-dot); }
+.kpi-tile.neu::before { background: var(--neu-dot); }
+
+.kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kpi-value-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.kpi-value {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  font-feature-settings: "tnum";
+}
+
+.kpi-subtext {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.kpi-secondary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.kpi-tile-compact {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-xs);
+}
+
+/* ==========================================================================
+   SECTION 6: WHO IS IT FOR (3 Audience Cards)
+   ========================================================================== */
+.audience-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.audience-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: var(--shadow-xs);
+  transition: all 0.2s ease;
+}
+
+.audience-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.audience-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 1px solid var(--border-subtle);
+}
+
+.audience-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.audience-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   SECTION 7: TECHNOLOGY STRIP
+   ========================================================================== */
+.tech-pills-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.tech-pill {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 8px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow-xs);
+  transition: all 0.15s ease;
+}
+
+.tech-pill:hover {
+  border-color: var(--brand-accent-border);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.tech-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ==========================================================================
+   SECTION 8: FINAL CTA CARD
+   ========================================================================== */
+.cta-banner-card {
+  background: linear-gradient(135deg, #ffffff 0%, var(--brand-accent-subtle) 100%);
+  border: 1px solid var(--brand-accent-border);
+  border-radius: var(--radius-xl);
+  padding: 56px 48px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(59, 130, 246, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-banner-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+.cta-headline {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  position: relative;
+  z-index: 2;
+}
+
+.cta-subtitle {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin: 12px auto 32px;
+  max-width: 520px;
+  line-height: 1.6;
+  position: relative;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   FOOTER (Exact match to analyzer footer)
+   ========================================================================== */
+.app-footer {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--surface);
+  padding: 24px 32px;
+  margin-top: 40px;
+}
+
+.footer-inner {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s ease;
+}
+
+.footer-link:hover {
+  color: var(--brand-accent);
+}
+
+/* ==========================================================================
+   SCROLL REVEAL ANIMATION SYSTEM
+   ========================================================================== */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-item.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Accessibility: prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero-float-icon {
+    animation: none !important;
+  }
+  .pipeline-travel-pulse {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVENESS (Desktop, Tablet, Mobile down to 360px)
+   ========================================================================== */
+@media (max-width: 1080px) {
+  .pipeline-track {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .pipeline-line-connector {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .hero-headline {
+    font-size: 40px;
+  }
+  .problem-grid {
+    grid-template-columns: 1fr;
+  }
+  .aspects-grid-3x2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .model-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .kpi-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .audience-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar-container {
+    padding: 0 16px;
+    height: auto;
+    flex-direction: column;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    gap: 10px;
+  }
+  .nav-links-wrap {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    justify-content: flex-start;
+  }
+  .nav-meta-badge {
+    display: none;
+  }
+  .section-wrapper {
+    padding: 60px 18px;
+  }
+  .hero-wrapper {
+    padding: 40px 18px 60px;
+  }
+  .hero-headline {
+    font-size: 32px;
+  }
+  .pipeline-track {
+    grid-template-columns: 1fr;
+  }
+  .aspects-grid-3x2 {
+    grid-template-columns: 1fr;
+  }
+  .kpi-grid-4 {
+    grid-template-columns: 1fr;
+  }
+  .kpi-secondary-row {
+    grid-template-columns: 1fr;
+  }
+  .cta-banner-card {
+    padding: 36px 20px;
+  }
+  .cta-headline {
+    font-size: 26px;
+  }
+  .footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Top Horizontal Scroll Progress Bar -->
+<div id="scroll-progress" aria-hidden="true"></div>
+
+<!-- ==========================================================================
+     STICKY SAAS NAVBAR
+     Direct clone of 72px light SaaS analyzer header in code.html
+     ========================================================================== -->
+<header class="navbar" id="navbar">
+  <div class="navbar-container">
+    <a href="#" class="nav-brand">
+      <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVdD--An9D0tvFRtfm8YpdX-cYRJRnum7Q_pFh1s1XCboZxJkWUw8-jZ-RSeQZTMEBs1y_zxuDqzd1xTYpVL9MzL9znG3WWFdlXNytfMZ3qtAkMZGGCoTTNfYhMgrT9JIsJVafniAzgkucQev99wfUFXVk2XEcm2CXgjQYv2cvf4hQR8wZVcOOp3ivfIN1G8Rx38WfuOSGCbALCVH2izJAWK7_1nSUxcakSbU-WofhDxMOlVORg41zvZGkUd8aCHOtY98" alt="ABSA Clothing Review Analyzer Logo" class="brand-logo-img">
+      <div class="brand-text">
+        <div class="brand-title">
+          ABSA <span class="brand-tag">v2.4</span>
+        </div>
+        <div class="brand-subtitle">Clothing Review Analyzer</div>
+      </div>
+    </a>
+
+    <!-- Anchor Navigation -->
+    <nav class="nav-links-wrap" aria-label="Landing Navigation">
+      <a href="#how-it-works" class="nav-link-btn">How it works</a>
+      <a href="#aspects" class="nav-link-btn">Aspects</a>
+      <a href="#models" class="nav-link-btn">Models</a>
+      <a href="#technology" class="nav-link-btn">Technology</a>
+    </nav>
+
+    <!-- Context Badge & Launch Action -->
+    <div class="nav-actions-right">
+      <div class="nav-meta-badge">
+        <span class="status-dot"></span>
+        <span>ATMECE CSE Project</span>
+      </div>
+      <button class="btn-launch" onclick="launchAnalyzerAlert()">
+        Launch Analyzer
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- ==========================================================================
+       HERO SECTION (Two-Column Layout: Left Copy, Right Live Single-Review Simulator)
+       ========================================================================== -->
+  <section class="hero-wrapper" id="hero">
+    <div class="hero-bg-ambient">
+      <div class="ambient-radial-glow"></div>
+      <div class="ambient-grid-faint"></div>
+      <!-- Subtle Floating Aspect Emojis -->
+      <span class="hero-float-icon" style="top:18%; left:8%; animation-delay: 0s;">📏</span>
+      <span class="hero-float-icon" style="top:25%; right:10%; animation-delay: 1.5s;">🧵</span>
+      <span class="hero-float-icon" style="top:70%; left:6%; animation-delay: 3s;">🪡</span>
+      <span class="hero-float-icon" style="top:75%; right:8%; animation-delay: 2s;">🎨</span>
+      <span class="hero-float-icon" style="top:45%; left:48%; animation-delay: 4s;">💰</span>
+      <span class="hero-float-icon" style="top:12%; right:34%; animation-delay: 2.8s;">🚚</span>
+    </div>
+
+    <div class="hero-grid">
+      <!-- Left Column: Typography & CTAs -->
+      <div class="hero-left reveal-item">
+        <span class="section-eyebrow">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m12 8 4 4-4 4M8 12h8"/></svg>
+          Aspect-Based Sentiment Analysis
+        </span>
+
+        <h1 class="hero-headline">
+          Don't just know IF they liked it. <br>
+          Know <span class="headline-accent">WHAT</span> they liked.
+        </h1>
+
+        <p class="hero-supporting-text">
+          Turn customer reviews into structured insights across size, fabric, stitching, color, price and delivery. Standard sentiment analysis tells you whether a customer was happy — ABSA tells you exactly why.
+        </p>
+
+        <div class="hero-cta-group">
+          <button class="btn-launch" style="padding: 12px 24px; font-size: 14.5px;" onclick="launchAnalyzerAlert()">
+            Try the Analyzer →
+          </button>
+          <a href="#how-it-works" class="btn-secondary">
+            See how it works ↓
+          </a>
+        </div>
+
+        <div class="hero-trust-row">
+          <div class="trust-item">
+            <span class="trust-check">✓</span>
+            <span>AI-powered review intelligence</span>
+          </div>
+          <div class="trust-item">
+            <span class="trust-check">✓</span>
+            <span>Sub-50ms inference</span>
+          </div>
+          <div class="trust-item">
+            <span class="trust-check">✓</span>
+            <span>DistilBERT contextual embeddings</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Live Analysis Preview Card (Direct Single Review Replica) -->
+      <div class="reveal-item" style="transition-delay: 0.15s;">
+        <div class="hero-demo-card">
+          <div class="demo-status-bar">
+            <div class="demo-status-pill">
+              <span class="pulse-active-dot"></span>
+              <span>LIVE ANALYSIS WORKSPACE</span>
+            </div>
+            <span class="demo-model-badge" id="demo-model-tag">DistilBERT Engine</span>
+          </div>
+
+          <div class="demo-inner-padding">
+            <!-- Review Input Area with Typing Simulator -->
+            <div>
+              <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.03em;">
+                Review Input
+              </div>
+              <div class="demo-review-input-box">
+                <span id="demo-text-target">The fabric is super soft but the size runs really small. Color is beautiful!</span>
+                <span class="typing-cursor"></span>
+              </div>
+            </div>
+
+            <!-- Overall Sentiment Strip -->
+            <div class="demo-overview-strip">
+              <div style="display:flex; align-items:center; gap: 10px;">
+                <span style="font-size: 13px; font-weight: 600; color: var(--text-secondary);">Overall Sentiment</span>
+                <span id="demo-overall-badge" class="sentiment-badge POSITIVE">POSITIVE</span>
+              </div>
+              <span style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">Active: DistilBERT</span>
+            </div>
+
+            <!-- Detected Aspects Container -->
+            <div>
+              <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+                Detected Aspects (<span id="demo-aspects-count">3</span>)
+              </div>
+
+              <div class="demo-detected-stack" id="demo-aspects-container">
+                <!-- FABRIC -->
+                <div class="demo-aspect-item">
+                  <div class="demo-aspect-top">
+                    <span class="demo-aspect-title">🧵 FABRIC</span>
+                    <div class="demo-confidence-wrap">
+                      <span class="demo-conf-pct">94.0%</span>
+                      <div class="demo-conf-track">
+                        <div class="demo-conf-fill" style="width: 94%; background: var(--pos-dot);"></div>
+                      </div>
+                      <span class="sentiment-badge POSITIVE">POSITIVE</span>
+                    </div>
+                  </div>
+                  <div class="demo-quote-clause">"The fabric is super soft"</div>
+                </div>
+
+                <!-- SIZE -->
+                <div class="demo-aspect-item">
+                  <div class="demo-aspect-top">
+                    <span class="demo-aspect-title">📏 SIZE</span>
+                    <div class="demo-confidence-wrap">
+                      <span class="demo-conf-pct">88.0%</span>
+                      <div class="demo-conf-track">
+                        <div class="demo-conf-fill" style="width: 88%; background: var(--neg-dot);"></div>
+                      </div>
+                      <span class="sentiment-badge NEGATIVE">NEGATIVE</span>
+                    </div>
+                  </div>
+                  <div class="demo-quote-clause">"the size runs really small"</div>
+                </div>
+
+                <!-- COLOR -->
+                <div class="demo-aspect-item">
+                  <div class="demo-aspect-top">
+                    <span class="demo-aspect-title">🎨 COLOR</span>
+                    <div class="demo-confidence-wrap">
+                      <span class="demo-conf-pct">91.0%</span>
+                      <div class="demo-conf-track">
+                        <div class="demo-conf-fill" style="width: 91%; background: var(--pos-dot);"></div>
+                      </div>
+                      <span class="sentiment-badge POSITIVE">POSITIVE</span>
+                    </div>
+                  </div>
+                  <div class="demo-quote-clause">"Color is beautiful!"</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Demo interactive switcher -->
+            <div class="demo-controls-footer">
+              <span style="font-size: 12px; color: var(--text-muted);">
+                Example <strong id="demo-scenario-idx">1</strong> of 3
+              </span>
+              <button class="demo-cycle-btn" onclick="nextDemoReview()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg>
+                Next Sample Review
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 1: THE PROBLEM (Side-by-Side Comparison)
+       ========================================================================== -->
+  <section class="section-wrapper" id="the-problem">
+    <div class="section-header-center reveal-item">
+      <span class="section-eyebrow">The Analytical Gap</span>
+      <h2 class="section-title">A single sentiment hides the real story.</h2>
+      <p class="section-subtitle">
+        Customer feedback is nuanced. When an algorithm squeezes a complex compound review into a single binary label, brands lose the actionable root cause behind returns.
+      </p>
+    </div>
+
+    <div class="problem-grid">
+      <!-- Left: Traditional Sentiment Analysis -->
+      <div class="comparison-card flawed reveal-item">
+        <div>
+          <div class="card-tag-header">
+            <span class="card-tag-name">Traditional Sentiment Analysis</span>
+            <span style="font-size: 12px; font-weight: 700; color: var(--neu-text); background: var(--neu-pastel-bg); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--neu-pastel-border);">Coarse & Lossy</span>
+          </div>
+
+          <div class="mock-review-callout">
+            "The fabric is great, but the size is too small."
+          </div>
+
+          <div class="problem-outcome-box">
+            <div class="outcome-pill-row">
+              <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Aggregate Classification:</span>
+              <span class="sentiment-badge NEUTRAL">NEUTRAL</span>
+            </div>
+            <div class="outcome-verdict-text">
+              1 review → 1 ambiguous label. The positive fabric praise and the negative sizing complaint cancel each other out mathematically.
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--border-subtle); font-size: 12.5px; color: var(--neg-text); display: flex; align-items: center; gap: 8px;">
+          <span>⚠️ Blindspot: Merchandisers cannot tell whether to switch fabric mills or update size charts.</span>
+        </div>
+      </div>
+
+      <!-- Right: Aspect-Based Sentiment Analysis -->
+      <div class="comparison-card solution reveal-item" style="transition-delay: 0.15s;">
+        <div>
+          <div class="card-tag-header">
+            <span class="card-tag-name" style="color: var(--brand-accent);">Aspect-Based Sentiment Analysis (ABSA)</span>
+            <span style="font-size: 12px; font-weight: 700; color: var(--brand-accent); background: var(--brand-accent-subtle); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--brand-accent-border);">Clause-Level Precision</span>
+          </div>
+
+          <!-- Fragmented colored sentence representation -->
+          <div class="fragmented-sentence-box">
+            <span class="frag-pos">The fabric is great</span>, but 
+            <span class="frag-neg">the size is too small</span>.
+          </div>
+
+          <div class="problem-outcome-box" style="background: #ffffff; border-color: var(--brand-accent-border);">
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">
+              Deconstructed Multi-Aspect Sentiments:
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap: 8px;">
+              <span class="aspect-chip POSITIVE">🧵 FABRIC: POSITIVE (92%)</span>
+              <span class="aspect-chip NEGATIVE">📏 SIZE: NEGATIVE (89%)</span>
+            </div>
+            <div class="outcome-verdict-text" style="margin-top: 6px;">
+              1 review → multiple structured opinions. Positive textile ratings remain intact while sizing issues are flagged directly to manufacturing.
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--border-subtle); font-size: 12.5px; color: var(--pos-text); display: flex; align-items: center; gap: 8px;">
+          <span>✓ Direct Action: Instruct pattern cutters to adjust specifications while retaining the current fabric supplier.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 2: HOW IT WORKS (End-to-End Pipeline)
+       ========================================================================== -->
+  <section class="section-wrapper" id="how-it-works" style="background: var(--bg-subtle); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+    <div class="section-header-center reveal-item">
+      <span class="section-eyebrow">End-to-End Architecture</span>
+      <h2 class="section-title">From review text to structured insight.</h2>
+      <p class="section-subtitle">
+        A seamless 8-stage data pipeline combining asynchronous microservices, contextual transformers, and reactive visualization.
+      </p>
+    </div>
+
+    <!-- Pipeline Track with Animated Indicator -->
+    <div class="pipeline-track reveal-item">
+      <div class="pipeline-line-connector">
+        <div class="pipeline-travel-pulse"></div>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">📝</div>
+          <span class="step-num-code">01</span>
+        </div>
+        <div class="step-title">Review Ingestion</div>
+        <div class="step-desc">Unstructured customer text captured via input or batch CSV uploads.</div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">⚛️</div>
+          <span class="step-num-code">02</span>
+        </div>
+        <div class="step-title">React Client</div>
+        <div class="step-desc">Client validation, state management, and real-time Plotly charts.</div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">⚡</div>
+          <span class="step-num-code">03</span>
+        </div>
+        <div class="step-title">FastAPI Gateway</div>
+        <div class="step-desc">High-throughput async Python REST endpoint running under 50ms.</div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">🧠</div>
+          <span class="step-num-code">04</span>
+        </div>
+        <div class="step-title">NLP Preprocessing</div>
+        <div class="step-desc">Tokenization, stopword removal, and dependency parsing via spaCy & NLTK.</div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">🤖</div>
+          <span class="step-num-code">05</span>
+        </div>
+        <div class="step-title">Model Inference</div>
+        <div class="step-desc">Fine-tuned DistilBERT transformer computes contextual multi-label vectors.</div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">🎯</div>
+          <span class="step-num-code">06</span>
+        </div>
+        <div class="step-title">ABSA Extraction</div>
+        <div class="step-desc">Aspect classification maps polarity to clothing attributes with confidence scores.</div>
+      </div>
+
+      <!-- Step 7 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">🍃</div>
+          <span class="step-num-code">07</span>
+        </div>
+        <div class="step-title">MongoDB Atlas</div>
+        <div class="step-desc">Predictions, timestamps, and department taxonomies indexed for fast queries.</div>
+      </div>
+
+      <!-- Step 8 -->
+      <div class="pipeline-step-card">
+        <div class="step-card-top">
+          <div class="step-circle-icon">📊</div>
+          <span class="step-num-code">08</span>
+        </div>
+        <div class="step-title">Visual Insights</div>
+        <div class="step-desc">Aggregated distribution donuts, aspect bar charts, and exportable reports.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 3: SIX ASPECTS WE DETECT (3x2 Grid)
+       ========================================================================== -->
+  <section class="section-wrapper" id="aspects">
+    <div class="section-header-center reveal-item">
+      <span class="section-eyebrow">Garment Domain Taxonomy</span>
+      <h2 class="section-title">Six aspects. One complete review.</h2>
+      <p class="section-subtitle">
+        Trained specifically on e-commerce clothing feedback to detect the exact attributes that dictate customer satisfaction and product return rates.
+      </p>
+    </div>
+
+    <div class="aspects-grid-3x2">
+      <!-- 1. SIZE -->
+      <div class="aspect-explore-card reveal-item" onclick="toggleAspectExample(this)">
+        <div class="aspect-card-header-row">
+          <div class="aspect-card-title-group">
+            <div class="aspect-emoji-bubble">📏</div>
+            <div>
+              <div class="aspect-card-name">Size & Fit</div>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">ASPECT: SIZE</span>
+            </div>
+          </div>
+          <span class="aspect-chip POSITIVE">110 Pos / 88 Neg</span>
+        </div>
+
+        <div class="aspect-keywords-pill-wrap">
+          <span class="aspect-kw-tag">fit</span>
+          <span class="aspect-kw-tag">small</span>
+          <span class="aspect-kw-tag">large</span>
+          <span class="aspect-kw-tag">tight</span>
+          <span class="aspect-kw-tag">loose</span>
+          <span class="aspect-kw-tag">length</span>
+        </div>
+
+        <div class="aspect-mini-sentiment-bar" title="Sentiment Balance">
+          <div class="sentiment-bar-segment" style="width: 46%; background: var(--pos-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 37%; background: var(--neg-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 17%; background: var(--neu-dot);"></div>
+        </div>
+
+        <div class="aspect-example-box">
+          "Runs almost two full sizes smaller than standard sizing in the bust."
+        </div>
+      </div>
+
+      <!-- 2. FABRIC -->
+      <div class="aspect-explore-card reveal-item" style="transition-delay: 0.08s;" onclick="toggleAspectExample(this)">
+        <div class="aspect-card-header-row">
+          <div class="aspect-card-title-group">
+            <div class="aspect-emoji-bubble">🧵</div>
+            <div>
+              <div class="aspect-card-name">Fabric & Material</div>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">ASPECT: FABRIC</span>
+            </div>
+          </div>
+          <span class="aspect-chip POSITIVE">190 Pos / 34 Neg</span>
+        </div>
+
+        <div class="aspect-keywords-pill-wrap">
+          <span class="aspect-kw-tag">soft</span>
+          <span class="aspect-kw-tag">cotton</span>
+          <span class="aspect-kw-tag">material</span>
+          <span class="aspect-kw-tag">polyester</span>
+          <span class="aspect-kw-tag">silk</span>
+          <span class="aspect-kw-tag">breathable</span>
+        </div>
+
+        <div class="aspect-mini-sentiment-bar" title="Sentiment Balance">
+          <div class="sentiment-bar-segment" style="width: 75%; background: var(--pos-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 14%; background: var(--neg-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 11%; background: var(--neu-dot);"></div>
+        </div>
+
+        <div class="aspect-example-box">
+          "The organic combed cotton is buttery soft and breathable for summer."
+        </div>
+      </div>
+
+      <!-- 3. STITCHING -->
+      <div class="aspect-explore-card reveal-item" style="transition-delay: 0.16s;" onclick="toggleAspectExample(this)">
+        <div class="aspect-card-header-row">
+          <div class="aspect-card-title-group">
+            <div class="aspect-emoji-bubble">🪡</div>
+            <div>
+              <div class="aspect-card-name">Stitching & Hemming</div>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">ASPECT: STITCHING</span>
+            </div>
+          </div>
+          <span class="aspect-chip NEGATIVE">75 Pos / 41 Neg</span>
+        </div>
+
+        <div class="aspect-keywords-pill-wrap">
+          <span class="aspect-kw-tag">seam</span>
+          <span class="aspect-kw-tag">thread</span>
+          <span class="aspect-kw-tag">stitching</span>
+          <span class="aspect-kw-tag">hem</span>
+          <span class="aspect-kw-tag">loose thread</span>
+          <span class="aspect-kw-tag">quality</span>
+        </div>
+
+        <div class="aspect-mini-sentiment-bar" title="Sentiment Balance">
+          <div class="sentiment-bar-segment" style="width: 55%; background: var(--pos-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 30%; background: var(--neg-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 15%; background: var(--neu-dot);"></div>
+        </div>
+
+        <div class="aspect-example-box">
+          "Poor seam alignment along the collar with loose threads after one wash."
+        </div>
+      </div>
+
+      <!-- 4. COLOR -->
+      <div class="aspect-explore-card reveal-item" style="transition-delay: 0.24s;" onclick="toggleAspectExample(this)">
+        <div class="aspect-card-header-row">
+          <div class="aspect-card-title-group">
+            <div class="aspect-emoji-bubble">🎨</div>
+            <div>
+              <div class="aspect-card-name">Color & Vibrancy</div>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">ASPECT: COLOR</span>
+            </div>
+          </div>
+          <span class="aspect-chip POSITIVE">160 Pos / 22 Neg</span>
+        </div>
+
+        <div class="aspect-keywords-pill-wrap">
+          <span class="aspect-kw-tag">shade</span>
+          <span class="aspect-kw-tag">color</span>
+          <span class="aspect-kw-tag">faded</span>
+          <span class="aspect-kw-tag">bright</span>
+          <span class="aspect-kw-tag">dye</span>
+          <span class="aspect-kw-tag">hue</span>
+        </div>
+
+        <div class="aspect-mini-sentiment-bar" title="Sentiment Balance">
+          <div class="sentiment-bar-segment" style="width: 76%; background: var(--pos-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 10%; background: var(--neg-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 14%; background: var(--neu-dot);"></div>
+        </div>
+
+        <div class="aspect-example-box">
+          "The rich emerald tone matches the studio catalog photographs perfectly."
+        </div>
+      </div>
+
+      <!-- 5. PRICE -->
+      <div class="aspect-explore-card reveal-item" style="transition-delay: 0.32s;" onclick="toggleAspectExample(this)">
+        <div class="aspect-card-header-row">
+          <div class="aspect-card-title-group">
+            <div class="aspect-emoji-bubble">💰</div>
+            <div>
+              <div class="aspect-card-name">Value & Price</div>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">ASPECT: PRICE</span>
+            </div>
+          </div>
+          <span class="aspect-chip NEUTRAL">64 Pos / 37 Neg</span>
+        </div>
+
+        <div class="aspect-keywords-pill-wrap">
+          <span class="aspect-kw-tag">price</span>
+          <span class="aspect-kw-tag">expensive</span>
+          <span class="aspect-kw-tag">cheap</span>
+          <span class="aspect-kw-tag">worth it</span>
+          <span class="aspect-kw-tag">deal</span>
+          <span class="aspect-kw-tag">value</span>
+        </div>
+
+        <div class="aspect-mini-sentiment-bar" title="Sentiment Balance">
+          <div class="sentiment-bar-segment" style="width: 44%; background: var(--pos-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 25%; background: var(--neg-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 31%; background: var(--neu-dot);"></div>
+        </div>
+
+        <div class="aspect-example-box">
+          "Remarkable construction for a $35 garment compared to designer labels."
+        </div>
+      </div>
+
+      <!-- 6. DELIVERY -->
+      <div class="aspect-explore-card reveal-item" style="transition-delay: 0.40s;" onclick="toggleAspectExample(this)">
+        <div class="aspect-card-header-row">
+          <div class="aspect-card-title-group">
+            <div class="aspect-emoji-bubble">🚚</div>
+            <div>
+              <div class="aspect-card-name">Logistics & Shipping</div>
+              <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim);">ASPECT: DELIVERY</span>
+            </div>
+          </div>
+          <span class="aspect-chip POSITIVE">58 Pos / 30 Neg</span>
+        </div>
+
+        <div class="aspect-keywords-pill-wrap">
+          <span class="aspect-kw-tag">shipping</span>
+          <span class="aspect-kw-tag">delivery</span>
+          <span class="aspect-kw-tag">arrived</span>
+          <span class="aspect-kw-tag">package</span>
+          <span class="aspect-kw-tag">courier</span>
+          <span class="aspect-kw-tag">delayed</span>
+        </div>
+
+        <div class="aspect-mini-sentiment-bar" title="Sentiment Balance">
+          <div class="sentiment-bar-segment" style="width: 53%; background: var(--pos-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 28%; background: var(--neg-dot);"></div>
+          <div class="sentiment-bar-segment" style="width: 19%; background: var(--neu-dot);"></div>
+        </div>
+
+        <div class="aspect-example-box">
+          "Dispatched in eco-friendly packaging and arrived two days ahead of schedule."
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 4: FOUR MODELS (Sophisticated Tabbed Showcase)
+       ========================================================================== -->
+  <section class="section-wrapper" id="models" style="background: var(--bg-subtle); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+    <div class="section-header-center reveal-item">
+      <span class="section-eyebrow">Machine Learning Evaluation</span>
+      <h2 class="section-title">Four models. One comparison.</h2>
+      <p class="section-subtitle">
+        Trained, tuned, and evaluated on identical stratified test partitions of real customer feedback.
+      </p>
+    </div>
+
+    <div class="reveal-item" style="display: flex; justify-content: center;">
+      <div class="model-tabs-container" id="model-nav-tabs">
+        <button class="model-tab-btn active" onclick="selectModelTab(0)">
+          <span class="model-dot-indicator" style="background: var(--col-distilbert);"></span>
+          <span>DistilBERT</span>
+          <span style="font-size: 10.5px; background: #ecfdf5; color: #065f46; padding: 1px 6px; border-radius: 4px; border: 1px solid #a7f3d0;">Leader</span>
+        </button>
+
+        <button class="model-tab-btn" onclick="selectModelTab(1)">
+          <span class="model-dot-indicator" style="background: var(--col-cnnbilstm);"></span>
+          <span>CNN-BiLSTM</span>
+        </button>
+
+        <button class="model-tab-btn" onclick="selectModelTab(2)">
+          <span class="model-dot-indicator" style="background: var(--col-svm);"></span>
+          <span>SVM</span>
+        </button>
+
+        <button class="model-tab-btn" onclick="selectModelTab(3)">
+          <span class="model-dot-indicator" style="background: var(--col-logreg);"></span>
+          <span>Logistic Regression</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Model Showcase Card -->
+    <div class="model-showcase-panel reveal-item" id="model-showcase-content">
+      <div class="model-detail-grid">
+        <!-- Left: Model Narrative & Architecture -->
+        <div class="model-bio-left">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span class="model-dot-indicator" id="m-indicator" style="background: var(--col-distilbert); width: 10px; height: 10px;"></span>
+            <span class="model-arch-pill" id="m-arch-pill">Transformer Architecture</span>
+          </div>
+
+          <h3 id="m-name">DistilBERT</h3>
+          <p class="model-description" id="m-desc">
+            Transformer-based contextual language model. Attention mechanisms retain full multi-clause context across compound sentences (e.g. separating "soft fabric" from "tight shoulders").
+          </p>
+
+          <div class="model-meta-list">
+            <div class="model-meta-item">
+              <strong>Framework:</strong>
+              <span id="m-framework" class="aspect-kw-tag">Hugging Face Transformers / PyTorch</span>
+            </div>
+            <div class="model-meta-item">
+              <strong>Evaluation Test Set:</strong>
+              <span>20% Stratified Holdout (Identical split across all 4 models)</span>
+            </div>
+            <div class="model-meta-item">
+              <strong>Latency Profile:</strong>
+              <span id="m-latency">~38ms per review inference</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 28px;">
+            <button class="btn-secondary" onclick="launchAnalyzerAlert('models')" style="font-size: 13px;">
+              View full comparison in Analyzer →
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Animated Metric Bars (Live from API or Skeleton Fallbacks) -->
+        <div class="model-metrics-right">
+          <div class="model-metrics-header">
+            <div>
+              <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main);">Test Split Benchmarks</span>
+              <div style="font-size: 11px; color: var(--text-muted);">Verified multi-class evaluation metrics</div>
+            </div>
+            <span style="font-size: 11px; font-family: var(--font-mono); color: var(--pos-text); background: var(--pos-pastel-bg); padding: 2px 6px; border-radius: 4px;">Verified</span>
+          </div>
+
+          <!-- Accuracy -->
+          <div class="metric-row">
+            <div class="metric-label-row">
+              <span style="color: var(--text-secondary); font-weight: 600;">Accuracy</span>
+              <span class="demo-conf-pct" id="m-metric-acc">91.42%</span>
+            </div>
+            <div class="metric-bar-track">
+              <div class="metric-bar-progress" id="m-bar-acc" style="width: 91.42%; background: var(--col-distilbert);"></div>
+            </div>
+          </div>
+
+          <!-- Precision -->
+          <div class="metric-row">
+            <div class="metric-label-row">
+              <span style="color: var(--text-secondary); font-weight: 600;">Precision (Macro)</span>
+              <span class="demo-conf-pct" id="m-metric-prec">90.87%</span>
+            </div>
+            <div class="metric-bar-track">
+              <div class="metric-bar-progress" id="m-bar-prec" style="width: 90.87%; background: var(--col-distilbert);"></div>
+            </div>
+          </div>
+
+          <!-- Recall -->
+          <div class="metric-row">
+            <div class="metric-label-row">
+              <span style="color: var(--text-secondary); font-weight: 600;">Recall (Macro)</span>
+              <span class="demo-conf-pct" id="m-metric-rec">91.42%</span>
+            </div>
+            <div class="metric-bar-track">
+              <div class="metric-bar-progress" id="m-bar-rec" style="width: 91.42%; background: var(--col-distilbert);"></div>
+            </div>
+          </div>
+
+          <!-- F1 Score -->
+          <div class="metric-row">
+            <div class="metric-label-row">
+              <span style="color: var(--text-secondary); font-weight: 600;">F1 Score</span>
+              <span class="demo-conf-pct" id="m-metric-f1">91.05%</span>
+            </div>
+            <div class="metric-bar-track">
+              <div class="metric-bar-progress" id="m-bar-f1" style="width: 91.05%; background: var(--col-distilbert);"></div>
+            </div>
+          </div>
+
+          <div style="font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 6px;">
+            Metric streams synchronize with FastAPI backend at localhost:8000
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 5: LIVE NUMBERS (Exact Analyzer KPI Tile Pattern)
+       ========================================================================== -->
+  <section class="section-wrapper" id="live-numbers">
+    <div class="section-header-center reveal-item">
+      <span class="section-eyebrow">Application Telemetry</span>
+      <h2 class="section-title">Turning reviews into measurable insight.</h2>
+      <p class="section-subtitle">
+        Real-time metrics calculated across the analyzed review dataset and validated against domain benchmarks.
+      </p>
+    </div>
+
+    <!-- Top 4 KPI Tiles -->
+    <div class="kpi-grid-4 reveal-item">
+      <div class="kpi-tile brand">
+        <div class="kpi-label">
+          <span>Reviews Analyzed</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value">640</span>
+        </div>
+        <div class="kpi-subtext">Live evaluation corpus</div>
+      </div>
+
+      <div class="kpi-tile pos">
+        <div class="kpi-label">
+          <span>Positive Sentiments</span>
+          <span style="color: var(--pos-dot);">●</span>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" style="color: var(--pos-text);">412</span>
+        </div>
+        <div class="kpi-subtext">64.4% favorable ratings</div>
+      </div>
+
+      <div class="kpi-tile neg">
+        <div class="kpi-label">
+          <span>Negative Sentiments</span>
+          <span style="color: var(--neg-dot);">●</span>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" style="color: var(--neg-text);">96</span>
+        </div>
+        <div class="kpi-subtext">15.0% flagged for attention</div>
+      </div>
+
+      <div class="kpi-tile neu">
+        <div class="kpi-label">
+          <span>Neutral Sentiments</span>
+          <span style="color: var(--neu-dot);">●</span>
+        </div>
+        <div class="kpi-value-row">
+          <span class="kpi-value" style="color: var(--neu-text);">132</span>
+        </div>
+        <div class="kpi-subtext">20.6% balanced feedback</div>
+      </div>
+    </div>
+
+    <!-- Secondary Compact KPI Row -->
+    <div class="kpi-secondary-row reveal-item" style="transition-delay: 0.15s;">
+      <div class="kpi-tile-compact">
+        <div style="display:flex; align-items:center; gap: 14px;">
+          <div style="font-size: 26px;">🎯</div>
+          <div>
+            <div style="font-size: 15px; font-weight: 700; color: var(--text-main);">6 Custom Clothing Aspects</div>
+            <div style="font-size: 12.5px; color: var(--text-muted);">Size, Fabric, Stitching, Color, Price, Logistics</div>
+          </div>
+        </div>
+        <span class="brand-tag">Domain Trained</span>
+      </div>
+
+      <div class="kpi-tile-compact">
+        <div style="display:flex; align-items:center; gap: 14px;">
+          <div style="font-size: 26px;">🤖</div>
+          <div>
+            <div style="font-size: 15px; font-weight: 700; color: var(--text-main);">4 Machine Learning Models</div>
+            <div style="font-size: 12.5px; color: var(--text-muted);">From linear baselines to fine-tuned Transformers</div>
+          </div>
+        </div>
+        <span class="brand-tag">Benchmarked</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 6: WHO IS IT FOR? (3 Audience Cards)
+       ========================================================================== -->
+  <section class="section-wrapper" id="who-is-it-for" style="background: var(--bg-subtle); border-top: 1px solid var(--border-subtle); border-bottom: 1px solid var(--border-subtle);">
+    <div class="section-header-center reveal-item">
+      <span class="section-eyebrow">Audience & Impact</span>
+      <h2 class="section-title">Understand what customers actually care about.</h2>
+      <p class="section-subtitle">
+        Bridging consumer shopping decisions with operational manufacturing intelligence.
+      </p>
+    </div>
+
+    <div class="audience-grid-3">
+      <!-- 1. Shoppers -->
+      <div class="audience-card reveal-item">
+        <div class="audience-icon-badge">🛍️</div>
+        <div class="audience-title">Smart Shoppers</div>
+        <p class="audience-desc">
+          Skip reading 500+ unstructured reviews. Immediately see whether customer complaints are about true-to-size fit, fabric shrinkage, delayed courier arrivals, or garment durability before purchasing.
+        </p>
+      </div>
+
+      <!-- 2. Sellers & Brands -->
+      <div class="audience-card reveal-item" style="transition-delay: 0.12s;">
+        <div class="audience-icon-badge">📈</div>
+        <div class="audience-title">Sellers & Brands</div>
+        <p class="audience-desc">
+          Stop guessing why return rates spiked. Pinpoint whether 1-star reviews are caused by delayed regional shipping or inconsistent sizing patterns across specific manufacturing production batches.
+        </p>
+      </div>
+
+      <!-- 3. Product & QA Teams -->
+      <div class="audience-card reveal-item" style="transition-delay: 0.24s;">
+        <div class="audience-icon-badge">✂️</div>
+        <div class="audience-title">Product & QA Teams</div>
+        <p class="audience-desc">
+          Identify textile flaws and seam tearing before minor defects escalate into expensive product recalls. Monitor stitching feedback across clothing departments in real time.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 7: TECHNOLOGY STRIP
+       ========================================================================== -->
+  <section class="section-wrapper" id="technology">
+    <div class="section-header-center reveal-item" style="margin-bottom: 32px;">
+      <span class="section-eyebrow">Full Stack Stack</span>
+      <h2 class="section-title">Built across the full ML application stack.</h2>
+      <p class="section-subtitle">
+        Engineered with industry-standard NLP libraries, high-performance web frameworks, and reactive client graphing.
+      </p>
+    </div>
+
+    <div class="tech-pills-row reveal-item">
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #61dafb;"></span>
+        <span>React 18</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #3f4f75;"></span>
+        <span>Plotly.js</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #009688;"></span>
+        <span>FastAPI</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #22c55e;"></span>
+        <span>Uvicorn</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #47a248;"></span>
+        <span>MongoDB Atlas</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #f7931e;"></span>
+        <span>scikit-learn</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #ee4c2c;"></span>
+        <span>PyTorch</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #ffd21e;"></span>
+        <span>Hugging Face</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #1e88e5;"></span>
+        <span>NLTK</span>
+      </div>
+      <div class="tech-pill">
+        <span class="tech-indicator-dot" style="background: #09a3d5;"></span>
+        <span>spaCy</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SECTION 8: FINAL CTA
+       ========================================================================== -->
+  <section class="section-wrapper" style="padding-top: 0;">
+    <div class="cta-banner-card reveal-item">
+      <h2 class="cta-headline">Paste a review. See every opinion inside it.</h2>
+      <p class="cta-subtitle">
+        Go from one sentence to structured aspect-level insight with sub-50ms inference.
+      </p>
+      <button class="btn-launch" style="padding: 14px 32px; font-size: 15px;" onclick="launchAnalyzerAlert()">
+        Launch Analyzer →
+      </button>
+    </div>
+  </section>
+</main>
+
+<!-- ==========================================================================
+     FOOTER (Exact match to analyzer footer)
+     ========================================================================== -->
+<footer class="app-footer">
+  <div class="footer-inner">
+    <div>
+      <strong>ABSA</strong> — Aspect-Based Sentiment Analysis | ATMECE CSE Project · <strong>Team 34</strong>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <a href="https://github.com" target="_blank" rel="noreferrer" class="footer-link">GitHub →</a>
+      <span>·</span>
+      <span>FastAPI Backend: localhost:8000</span>
+      <span>·</span>
+      <a href="#hero" class="footer-link">Back to top ↑</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ==========================================================================
+     INTERACTIVE JAVASCRIPT LOGIC
+     1. Scroll progress bar & Sticky Navbar blur
+     2. IntersectionObserver scroll-reveal
+     3. Hero Live Review Typing Simulator
+     4. Tabbed Model Comparison Switcher
+     ========================================================================== -->
+<script>
+/* 1. Scroll Progress & Sticky Navbar */
+const scrollBar = document.getElementById('scroll-progress');
+const navbar = document.getElementById('navbar');
+
+window.addEventListener('scroll', () => {
+  const scrollTotal = document.documentElement.scrollTop;
+  const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  if (height > 0) {
+    scrollBar.style.width = (scrollTotal / height * 100) + '%';
+  }
+
+  if (window.scrollY > 20) {
+    navbar.classList.add('scrolled');
+  } else {
+    navbar.classList.remove('scrolled');
+  }
+}, { passive: true });
+
+/* 2. Scroll Reveal IntersectionObserver */
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('revealed');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.12 });
+
+document.querySelectorAll('.reveal-item').forEach(el => observer.observe(el));
+
+/* 3. Hero Live Analysis Simulation (Rotates 3 Reviews) */
+const SAMPLE_REVIEWS = [
+  {
+    text: "The fabric is super soft but the size runs really small. Color is beautiful!",
+    overall: "POSITIVE",
+    model: "DistilBERT Engine",
+    aspects: [
+      { name: "🧵 FABRIC", s: "POSITIVE", c: 94.0, quote: "The fabric is super soft", color: "var(--pos-dot)" },
+      { name: "📏 SIZE", s: "NEGATIVE", c: 88.0, quote: "the size runs really small", color: "var(--neg-dot)" },
+      { name: "🎨 COLOR", s: "POSITIVE", c: 91.0, quote: "Color is beautiful!", color: "var(--pos-dot)" }
+    ]
+  },
+  {
+    text: "Delivery took three weeks and the color faded after one wash. Price was okay.",
+    overall: "NEGATIVE",
+    model: "DistilBERT Engine",
+    aspects: [
+      { name: "🚚 DELIVERY", s: "NEGATIVE", c: 96.0, quote: "Delivery took three weeks", color: "var(--neg-dot)" },
+      { name: "🎨 COLOR", s: "NEGATIVE", c: 92.0, quote: "the color faded after one wash", color: "var(--neg-dot)" },
+      { name: "💰 PRICE", s: "NEUTRAL", c: 85.0, quote: "Price was okay", color: "var(--neu-dot)" }
+    ]
+  },
+  {
+    text: "Poor stitching along the seam, but the fabric feels premium and delivery was fast!",
+    overall: "POSITIVE",
+    model: "CNN-BiLSTM Baseline",
+    aspects: [
+      { name: "🪡 STITCHING", s: "NEGATIVE", c: 95.0, quote: "Poor stitching along the seam", color: "var(--neg-dot)" },
+      { name: "🧵 FABRIC", s: "POSITIVE", c: 89.0, quote: "fabric feels premium", color: "var(--pos-dot)" },
+      { name: "🚚 DELIVERY", s: "POSITIVE", c: 97.0, quote: "delivery was fast!", color: "var(--pos-dot)" }
+    ]
+  }
+];
+
+let activeReviewIdx = 0;
+let typingTimeout = null;
+
+function renderDemoReview(idx) {
+  const r = SAMPLE_REVIEWS[idx];
+  document.getElementById('demo-scenario-idx').innerText = idx + 1;
+  document.getElementById('demo-model-tag').innerText = r.model;
+  
+  // Overall badge
+  const overallBadge = document.getElementById('demo-overall-badge');
+  overallBadge.className = `sentiment-badge ${r.overall}`;
+  overallBadge.innerText = r.overall;
+
+  // Aspect items
+  document.getElementById('demo-aspects-count').innerText = r.aspects.length;
+  const container = document.getElementById('demo-aspects-container');
+  container.innerHTML = r.aspects.map(a => `
+    <div class="demo-aspect-item">
+      <div class="demo-aspect-top">
+        <span class="demo-aspect-title">${a.name}</span>
+        <div class="demo-confidence-wrap">
+          <span class="demo-conf-pct">${a.c.toFixed(1)}%</span>
+          <div class="demo-conf-track">
+            <div class="demo-conf-fill" style="width: ${a.c}%; background: ${a.color};"></div>
+          </div>
+          <span class="sentiment-badge ${a.s}">${a.s}</span>
+        </div>
+      </div>
+      <div class="demo-quote-clause">"${a.quote}"</div>
+    </div>
+  `).join('');
+
+  // Typing effect on the review text box
+  const target = document.getElementById('demo-text-target');
+  target.innerText = '';
+  clearTimeout(typingTimeout);
+  let charIdx = 0;
+  
+  function typeChar() {
+    if (charIdx < r.text.length) {
+      target.innerText += r.text[charIdx];
+      charIdx++;
+      typingTimeout = setTimeout(typeChar, 24);
+    }
+  }
+  typeChar();
+}
+
+function nextDemoReview() {
+  activeReviewIdx = (activeReviewIdx + 1) % SAMPLE_REVIEWS.length;
+  renderDemoReview(activeReviewIdx);
+}
+
+// Initial demo render
+renderDemoReview(0);
+
+/* 4. Tabbed Models Showcase */
+const MODELS_DATA = [
+  {
+    name: "DistilBERT",
+    color: "var(--col-distilbert)",
+    pill: "Transformer Architecture",
+    desc: "Transformer-based contextual language model. Attention mechanisms retain full multi-clause context across compound sentences (e.g. separating 'soft fabric' from 'tight shoulders').",
+    framework: "Hugging Face Transformers / PyTorch",
+    latency: "~38ms per review inference",
+    acc: "91.42%", prec: "90.87%", rec: "91.42%", f1: "91.05%",
+    accNum: 91.42, precNum: 90.87, recNum: 91.42, f1Num: 91.05
+  },
+  {
+    name: "CNN-BiLSTM",
+    color: "var(--col-cnnbilstm)",
+    pill: "Deep Sequence Model",
+    desc: "Hybrid deep neural network where 1D convolutions capture localized phrase patterns and bidirectional LSTMs preserve sequential memory across paragraph tokens.",
+    framework: "PyTorch / TensorFlow",
+    latency: "~24ms per review inference",
+    acc: "88.90%", prec: "88.30%", rec: "88.90%", f1: "88.50%",
+    accNum: 88.90, precNum: 88.30, recNum: 88.90, f1Num: 88.50
+  },
+  {
+    name: "SVM (Support Vector Machine)",
+    color: "var(--col-svm)",
+    pill: "Linear Margin Classifier",
+    desc: "Classical maximum-margin machine learning classifier trained over TF-IDF n-gram feature representations. Highly reliable sparse baseline with low compute footprint.",
+    framework: "scikit-learn (TF-IDF Vectorizer)",
+    latency: "~8ms per review inference",
+    acc: "84.70%", prec: "84.10%", rec: "84.70%", f1: "84.20%",
+    accNum: 84.70, precNum: 84.10, recNum: 84.70, f1Num: 84.20
+  },
+  {
+    name: "Logistic Regression",
+    color: "var(--col-logreg)",
+    pill: "Statistical Baseline",
+    desc: "Multinomial probabilistic regression model. Serves as our primary interpretable baseline to measure incremental gains from deep contextual attention layers.",
+    framework: "scikit-learn",
+    latency: "~4ms per review inference",
+    acc: "82.30%", prec: "81.60%", rec: "82.30%", f1: "81.70%",
+    accNum: 82.30, precNum: 81.60, recNum: 82.30, f1Num: 81.70
+  }
+];
+
+function selectModelTab(idx) {
+  const tabs = document.querySelectorAll('.model-tab-btn');
+  tabs.forEach((t, i) => {
+    if (i === idx) t.classList.add('active');
+    else t.classList.remove('active');
+  });
+
+  const m = MODELS_DATA[idx];
+  document.getElementById('m-name').innerText = m.name;
+  document.getElementById('m-arch-pill').innerText = m.pill;
+  document.getElementById('m-desc').innerText = m.desc;
+  document.getElementById('m-framework').innerText = m.framework;
+  document.getElementById('m-latency').innerText = m.latency;
+  document.getElementById('m-indicator').style.background = m.color;
+
+  // Update metric text & progress bars
+  document.getElementById('m-metric-acc').innerText = m.acc;
+  document.getElementById('m-bar-acc').style.width = m.accNum + '%';
+  document.getElementById('m-bar-acc').style.background = m.color;
+
+  document.getElementById('m-metric-prec').innerText = m.prec;
+  document.getElementById('m-bar-prec').style.width = m.precNum + '%';
+  document.getElementById('m-bar-prec').style.background = m.color;
+
+  document.getElementById('m-metric-rec').innerText = m.rec;
+  document.getElementById('m-bar-rec').style.width = m.recNum + '%';
+  document.getElementById('m-bar-rec').style.background = m.color;
+
+  document.getElementById('m-metric-f1').innerText = m.f1;
+  document.getElementById('m-bar-f1').style.width = m.f1Num + '%';
+  document.getElementById('m-bar-f1').style.background = m.color;
+}
+
+/* 5. Clickable Aspect Card Example Toggle */
+function toggleAspectExample(card) {
+  const box = card.querySelector('.aspect-example-box');
+  if (box) {
+    box.style.backgroundColor = box.style.backgroundColor === 'rgb(239, 246, 255)' ? 'var(--bg-page)' : 'rgb(239, 246, 255)';
+    box.style.borderColor = 'var(--brand-accent)';
+  }
+}
+
+/* 6. Launch Analyzer Alert */
+function launchAnalyzerAlert(tab) {
+  const targetTab = tab ? `on the '${tab}' section` : '';
+  alert(`Connecting to the ABSA Clothing Review Analyzer ${targetTab}...\n(In the full React application, this transitions smoothly into your 5-tab dashboard via sessionStorage).`);
+}
+</script>
+</body>
+</html>

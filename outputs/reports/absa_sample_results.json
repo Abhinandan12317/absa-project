@@ -1,0 +1,317 @@
+{
+  "batch_results": [
+    {
+      "review": "The fabric is super soft but the size runs really small. Color is beautiful!",
+      "aspects_detected": [
+        "SIZE",
+        "FABRIC",
+        "COLOR"
+      ],
+      "aspect_sentiments": {
+        "SIZE": {
+          "sentiment": "NEUTRAL",
+          "confidence": 0.4792,
+          "source": "distilbert",
+          "keywords_found": [
+            "size",
+            "small"
+          ],
+          "context": "The fabric is super soft but the size runs really small",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 0,
+            "NEGATIVE": 0,
+            "NEUTRAL": 1
+          }
+        },
+        "FABRIC": {
+          "sentiment": "POSITIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "fabric",
+            "soft"
+          ],
+          "context": "The fabric is super soft but the size runs really small",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 1,
+            "NEGATIVE": 0,
+            "NEUTRAL": 0
+          }
+        },
+        "COLOR": {
+          "sentiment": "POSITIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "color"
+          ],
+          "context": "Color is beautiful",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 1,
+            "NEGATIVE": 0,
+            "NEUTRAL": 0
+          }
+        }
+      },
+      "model_used": "DistilBERT + Rules",
+      "overall_sentiment": "POSITIVE",
+      "review_id": 0
+    },
+    {
+      "review": "Terrible stitching, fell apart after one wash. Price is way too high for this quality.",
+      "aspects_detected": [
+        "STITCHING",
+        "PRICE"
+      ],
+      "aspect_sentiments": {
+        "STITCHING": {
+          "sentiment": "NEGATIVE",
+          "confidence": 0.7897,
+          "source": "rules",
+          "keywords_found": [
+            "stitching",
+            "fell apart"
+          ],
+          "context": "Terrible stitching, fell apart after one wash | Price is way too high for this quality",
+          "sentence_count": 2,
+          "votes": {
+            "POSITIVE": 0,
+            "NEGATIVE": 2,
+            "NEUTRAL": 0
+          }
+        },
+        "PRICE": {
+          "sentiment": "NEGATIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "price"
+          ],
+          "context": "Price is way too high for this quality",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 0,
+            "NEGATIVE": 1,
+            "NEUTRAL": 0
+          }
+        }
+      },
+      "model_used": "DistilBERT + Rules",
+      "overall_sentiment": "NEGATIVE",
+      "review_id": 1
+    },
+    {
+      "review": "Fast delivery! The dress fits perfectly and the color is exactly as shown.",
+      "aspects_detected": [
+        "SIZE",
+        "COLOR",
+        "DELIVERY"
+      ],
+      "aspect_sentiments": {
+        "SIZE": {
+          "sentiment": "POSITIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "fits"
+          ],
+          "context": "The dress fits perfectly and the color is exactly as shown",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 1,
+            "NEGATIVE": 0,
+            "NEUTRAL": 0
+          }
+        },
+        "COLOR": {
+          "sentiment": "POSITIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "color",
+            "as shown"
+          ],
+          "context": "The dress fits perfectly and the color is exactly as shown",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 1,
+            "NEGATIVE": 0,
+            "NEUTRAL": 0
+          }
+        },
+        "DELIVERY": {
+          "sentiment": "POSITIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "delivery",
+            "fast delivery",
+            "fast"
+          ],
+          "context": "Fast delivery",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 1,
+            "NEGATIVE": 0,
+            "NEUTRAL": 0
+          }
+        }
+      },
+      "model_used": "DistilBERT + Rules",
+      "overall_sentiment": "POSITIVE",
+      "review_id": 2
+    },
+    {
+      "review": "Material feels cheap and thin. Very disappointed with the overall quality.",
+      "aspects_detected": [
+        "FABRIC"
+      ],
+      "aspect_sentiments": {
+        "FABRIC": {
+          "sentiment": "NEGATIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "material",
+            "thin",
+            "feels"
+          ],
+          "context": "Material feels cheap and thin",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 0,
+            "NEGATIVE": 1,
+            "NEUTRAL": 0
+          }
+        }
+      },
+      "model_used": "DistilBERT + Rules",
+      "overall_sentiment": "NEGATIVE",
+      "review_id": 3
+    },
+    {
+      "review": "The fabric is not soft at all, feels rough and cheap.",
+      "aspects_detected": [
+        "FABRIC"
+      ],
+      "aspect_sentiments": {
+        "FABRIC": {
+          "sentiment": "NEGATIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "fabric",
+            "soft",
+            "rough",
+            "feels"
+          ],
+          "context": "The fabric is not soft at all, feels rough and cheap",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 0,
+            "NEGATIVE": 1,
+            "NEUTRAL": 0
+          }
+        }
+      },
+      "model_used": "DistilBERT + Rules",
+      "overall_sentiment": "NEGATIVE",
+      "review_id": 4
+    },
+    {
+      "review": "Doesn't fit well even though I ordered my usual size.",
+      "aspects_detected": [
+        "SIZE"
+      ],
+      "aspect_sentiments": {
+        "SIZE": {
+          "sentiment": "NEGATIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "size",
+            "fit"
+          ],
+          "context": "Doesn't fit well even though I ordered my usual size",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 0,
+            "NEGATIVE": 1,
+            "NEUTRAL": 0
+          }
+        }
+      },
+      "model_used": "DistilBERT + Rules",
+      "overall_sentiment": "NEGATIVE",
+      "review_id": 5
+    },
+    {
+      "review": "Not overpriced for what you get \u2014 actually great value.",
+      "aspects_detected": [
+        "PRICE"
+      ],
+      "aspect_sentiments": {
+        "PRICE": {
+          "sentiment": "POSITIVE",
+          "confidence": 1.0,
+          "source": "rules",
+          "keywords_found": [
+            "value",
+            "overpriced"
+          ],
+          "context": "Not overpriced for what you get \u2014 actually great value",
+          "sentence_count": 1,
+          "votes": {
+            "POSITIVE": 1,
+            "NEGATIVE": 0,
+            "NEUTRAL": 0
+          }
+        }
+      },
+      "model_used": "DistilBERT + Rules",
+      "overall_sentiment": "POSITIVE",
+      "review_id": 6
+    }
+  ],
+  "summary": {
+    "SIZE": {
+      "count": 3,
+      "positive_pct": 33.3,
+      "negative_pct": 33.3,
+      "neutral_pct": 33.3
+    },
+    "FABRIC": {
+      "count": 3,
+      "positive_pct": 33.3,
+      "negative_pct": 66.7,
+      "neutral_pct": 0.0
+    },
+    "STITCHING": {
+      "count": 1,
+      "positive_pct": 0.0,
+      "negative_pct": 100.0,
+      "neutral_pct": 0.0
+    },
+    "COLOR": {
+      "count": 2,
+      "positive_pct": 100.0,
+      "negative_pct": 0.0,
+      "neutral_pct": 0.0
+    },
+    "PRICE": {
+      "count": 2,
+      "positive_pct": 50.0,
+      "negative_pct": 50.0,
+      "neutral_pct": 0.0
+    },
+    "DELIVERY": {
+      "count": 1,
+      "positive_pct": 100.0,
+      "negative_pct": 0.0,
+      "neutral_pct": 0.0
+    }
+  }
+}
