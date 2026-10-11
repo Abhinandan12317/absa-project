@@ -79,7 +79,18 @@ GENERIC_NEGATIVE = [
     "terrible", "awful", "horrible", "worst", "bad", "poor", "disappointed",
     "disappointing", "hate", "hated", "ugly", "disgusting", "waste", "useless",
     "garbage", "trash", "pathetic", "ridiculous", "unacceptable", "annoying",
-    "never again", "do not buy", "don't buy", "avoid", "returned", "returning"
+    "never again", "do not buy", "don't buy", "avoid", "returned", "returning",
+    # Additional negative indicators
+    "complaint", "complaints", "upset", "sadly", "disaster", "disastrous",
+    "defective", "defect", "broken", "damaged", "ripped", "torn", "fell apart",
+    "falling apart", "not worth", "not what", "misleading", "misrepresented",
+    "false advertising", "nothing like", "looks nothing", "scam", "fraud",
+    "shocked", "shocked by", "poor quality", "bad quality", "cheaply made",
+    "not happy", "very unhappy", "will not buy", "would not buy", "can't recommend",
+    "cannot recommend", "don't recommend", "do not recommend", "regret", "regretted",
+    "refund", "sending back", "sent back", "going back", "took back", "wasted",
+    "rip off", "ripoff", "robbery", "overcharged", "fell short", "let down",
+    "let me down", "not impressed", "unimpressed", "wish i hadn't", "mistake"
 ]
 
 GENERIC_POSITIVE = [
@@ -100,6 +111,21 @@ NEGATION_WORDS = {
 
 NEGATION_WINDOW = 4  # number of words after negation word to mark as negated
 
+# ── Intensifier words (allowed between phrase words during matching) ─────────
+# e.g. "runs small" should match "runs really small", "runs very small", etc.
+INTENSIFIERS = frozenset([
+    "really", "very", "so", "quite", "extremely", "incredibly", "super",
+    "truly", "totally", "absolutely", "pretty", "rather", "fairly",
+    "awfully", "terribly", "way", "just", "even", "still"
+])
+
+# Pre-built regex fragment: 0-2 optional intensifiers between phrase words
+_INTENSIFIER_OPT = (
+    r'(?:(?:' +
+    '|'.join(re.escape(i) for i in sorted(INTENSIFIERS)) +
+    r')\s+){0,2}'
+)
+
 
 def get_negated_positions(text: str) -> set:
     """
@@ -119,19 +145,68 @@ def get_negated_positions(text: str) -> set:
 
 def is_phrase_negated(phrase: str, text: str) -> bool:
     """
-    Returns True if the keyword phrase appears inside a negation window.
+    Returns True if the keyword phrase appears inside a negation window
+    that was triggered by a negation word OUTSIDE (before) the phrase.
     Normalises apostrophes before matching.
+
+    Key fix: ignore negation triggers that come from within the phrase itself.
+    e.g. 'do not buy' contains 'not' at index 1, which would mark 'buy' (index 2)
+    as negated — but that is the phrase's own internal negation, not an external one.
     """
     text = text.replace("\u2019", "'").replace("\u2018", "'")
     words = re.sub(r"[.,!?;:]", "", text.lower()).split()
-    negated_positions = get_negated_positions(text)
     phrase_words = phrase.lower().split()
     phrase_len = len(phrase_words)
 
     for i in range(len(words) - phrase_len + 1):
         if words[i:i + phrase_len] == phrase_words:
+            # Build negated positions from ONLY negation words that appear BEFORE
+            # the start of this phrase instance (external negation only).
+            negated_positions = set()
+            for k in range(i):   # only words before phrase start
+                if words[k] in NEGATION_WORDS:
+                    for j in range(k + 1, min(k + 1 + NEGATION_WINDOW, len(words))):
+                        negated_positions.add(j)
+
+            # The phrase is externally negated if any of its positions fall in the window
             if any(pos in negated_positions for pos in range(i, i + phrase_len)):
                 return True
+    return False
+
+
+def _phrase_match(phrase: str, text_lower: str):
+    """
+    Find phrase in text_lower, allowing up to 2 optional intensifiers between
+    consecutive words (e.g. 'runs small' matches 'runs really small',
+    'runs very small', 'too tight' matches 'way too tight', etc.).
+    Returns the first re.Match or None.
+    """
+    parts = phrase.lower().split()
+    if len(parts) == 1:
+        return re.search(r'\b' + re.escape(parts[0]) + r'\b', text_lower)
+    # Build pattern: word0  [0-2 intensifiers]  word1  [0-2 intensifiers]  word2 ...
+    pattern = r'\b' + re.escape(parts[0])
+    for part in parts[1:]:
+        pattern += r'\s+' + _INTENSIFIER_OPT + re.escape(part)
+    pattern += r'\b'
+    return re.search(pattern, text_lower)
+
+
+def is_match_externally_negated(match_obj, text: str) -> bool:
+    """
+    Returns True if the matched span is preceded (within NEGATION_WINDOW words)
+    by a negation word — using the character-level match position so it works
+    correctly even when the phrase was found via fuzzy/intensifier-aware matching.
+    Only looks at words BEFORE the match start.
+    """
+    text_norm = text.replace('\u2019', "'").replace('\u2018', "'")
+    # Extract everything before the match and clean punctuation
+    prefix = re.sub(r'[.,!?;:]', '', text_norm[:match_obj.start()].lower())
+    prefix_words = prefix.split()
+    # Check the last NEGATION_WINDOW words before the match
+    for word in prefix_words[-NEGATION_WINDOW:]:
+        if word in NEGATION_WORDS:
+            return True
     return False
 
 
@@ -141,6 +216,8 @@ def rule_based_sentiment(text: str, aspect: str):
     Returns 'POSITIVE', 'NEGATIVE', or None.
     Negated positives count as negative and vice-versa.
     Phrases that already start with a negation word are never double-negated.
+    Supports intensifier-tolerant phrase matching (e.g. 'runs really small'
+    matches the pattern 'runs small').
     """
     # Normalise apostrophes
     text = text.replace("\u2019", "'").replace("\u2018", "'")
@@ -150,9 +227,10 @@ def rule_based_sentiment(text: str, aspect: str):
     pos_words = ASPECT_POSITIVE_WORDS.get(aspect, []) + GENERIC_POSITIVE
 
     # Collect multi-word negative phrases present in text (for overlap protection)
+    # Uses fuzzy matching so "not really as shown" still activates "not as shown"
     active_neg_phrases = set()
     for w in neg_words:
-        if len(w.split()) > 1 and re.search(r'\b' + re.escape(w) + r'\b', text_lower):
+        if len(w.split()) > 1 and _phrase_match(w, text_lower):
             active_neg_phrases.add(w)
 
     neg_hits = 0
@@ -161,12 +239,13 @@ def rule_based_sentiment(text: str, aspect: str):
     for w in neg_words:
         parts = w.split()
         weight = 1 if len(parts) == 1 else 2
-        if not re.search(r'\b' + re.escape(w) + r'\b', text_lower):
+        m = _phrase_match(w, text_lower)
+        if not m:
             continue
         # Never double-negate a phrase that already starts with a negation word
         # e.g. "not worth", "never arrived", "not as shown" are inherently negative
         phrase_starts_with_negation = parts[0] in NEGATION_WORDS
-        if not phrase_starts_with_negation and is_phrase_negated(w, text_lower):
+        if not phrase_starts_with_negation and is_match_externally_negated(m, text_lower):
             pos_hits += weight   # e.g. "not terrible" → positive
         else:
             neg_hits += weight
@@ -174,13 +253,14 @@ def rule_based_sentiment(text: str, aspect: str):
     for w in pos_words:
         parts = w.split()
         weight = 1 if len(parts) == 1 else 2
-        if not re.search(r'\b' + re.escape(w) + r'\b', text_lower):
+        m = _phrase_match(w, text_lower)
+        if not m:
             continue
         # Skip if a longer negative phrase already covers this positive keyword
         # e.g. skip "as shown" when "not as shown" is active
         if any(w in neg_phrase for neg_phrase in active_neg_phrases):
             continue
-        if is_phrase_negated(w, text_lower):
+        if is_match_externally_negated(m, text_lower):
             neg_hits += weight   # e.g. "not soft" → negative
         else:
             pos_hits += weight
@@ -303,10 +383,25 @@ def analyze_review(review_text: str,
     }
 
     if not detected:
-        overall = predict_sentiment(review_text,
-                                    distilbert=distilbert, tokenizer=tokenizer, device=device,
-                                    lr_model=lr_model, vectorizer=vectorizer)
-        results["overall_sentiment"] = overall["label"]
+        # ── Apply generic rule-based check FIRST before deferring to DistilBERT ──
+        text_lower = review_text.lower()
+        generic_neg_hits = sum(1 for w in GENERIC_NEGATIVE
+                               if (m := _phrase_match(w, text_lower))
+                               and not is_match_externally_negated(m, text_lower))
+        generic_pos_hits = sum(1 for w in GENERIC_POSITIVE
+                               if (m := _phrase_match(w, text_lower))
+                               and not is_match_externally_negated(m, text_lower))
+
+        if generic_neg_hits > generic_pos_hits:
+            results["overall_sentiment"] = "NEGATIVE"
+        elif generic_pos_hits > generic_neg_hits:
+            results["overall_sentiment"] = "POSITIVE"
+        else:
+            # Fall back to DistilBERT / LR only when rules are inconclusive
+            overall = predict_sentiment(review_text,
+                                        distilbert=distilbert, tokenizer=tokenizer, device=device,
+                                        lr_model=lr_model, vectorizer=vectorizer)
+            results["overall_sentiment"] = overall["label"]
         return results
 
     for aspect, keywords in detected.items():
@@ -361,12 +456,24 @@ def analyze_review(review_text: str,
     sentiments = [v["sentiment"] for v in results["aspect_sentiments"].values()]
     pos = sentiments.count("POSITIVE")
     neg = sentiments.count("NEGATIVE")
-    if pos > neg:
+    neu = sentiments.count("NEUTRAL")
+    total = len(sentiments)
+
+    if neg == 0 and pos == 0:
+        # Only NEUTRAL aspects found
+        results["overall_sentiment"] = "NEUTRAL"
+    elif neg == 0:
         results["overall_sentiment"] = "POSITIVE"
+    elif pos == 0:
+        results["overall_sentiment"] = "NEGATIVE"
     elif neg > pos:
         results["overall_sentiment"] = "NEGATIVE"
+    elif pos > neg:
+        results["overall_sentiment"] = "POSITIVE"
     else:
-        results["overall_sentiment"] = "NEUTRAL"
+        # ── FIX: Tie between POSITIVE and NEGATIVE → prefer NEGATIVE ──
+        # A review with equally negative signals is more likely a negative experience.
+        results["overall_sentiment"] = "NEGATIVE"
 
     return results
 
@@ -464,6 +571,43 @@ if __name__ == "__main__":
         lr_model, vectorizer = load_lr_model()
         print("LR model loaded!\n")
 
+    # ── Regression tests for bug fixes ───────────────────────────────────────
+    print("=== Regression tests (end-to-end with model) ===")
+    regression_cases = [
+        # FIX 1: No aspect detected + negative language → should be NEGATIVE, not NEUTRAL
+        ("not at all what it looks like or is described as. sadly will be returning", "NEGATIVE"),
+        ("do not buy. i'm very upset i have to pay the $5.95 return fee since i ordered this.", "NEGATIVE"),
+        ("obviously they are going back tomorrow. i'm very disappointed.", "NEGATIVE"),
+        ("i had been drooling over this top for awhile and was so disappointed!", "NEGATIVE"),
+        # FIX 1 cont'd: positive language with no aspect → should be POSITIVE
+        ("love it! amazing quality and would highly recommend.", "POSITIVE"),
+        # FIX 2: Mixed pos+neg aspects tie → should lean NEGATIVE not NEUTRAL
+        ("The fabric is beautiful but runs terribly small.", "NEGATIVE"),
+        # Normal cases that should still work
+        ("The fabric is super soft but the size runs really small. Color is beautiful!", None),  # can be anything
+        ("Terrible stitching, fell apart after one wash. Price is way too high.", "NEGATIVE"),
+        ("Fast delivery! The dress fits perfectly and the color is exactly as shown.", "POSITIVE"),
+    ]
+    reg_passed = 0
+    reg_total = 0
+    for text, expected_overall in regression_cases:
+        result = analyze_review(text, distilbert=distilbert, tokenizer=tokenizer, device=device,
+                                lr_model=lr_model, vectorizer=vectorizer)
+        got = result["overall_sentiment"]
+        if expected_overall is None:
+            status = "–"  # no expectation
+        elif got == expected_overall:
+            status = "✓"
+            reg_passed += 1
+            reg_total += 1
+        else:
+            status = "✗ FAIL"
+            reg_total += 1
+        print(f"  {status}  '{text[:70]}...' → {got}" +
+              (f"  (expected {expected_overall})" if expected_overall else ""))
+    if reg_total > 0:
+        print(f"\n  Passed {reg_passed}/{reg_total} regression tests.\n")
+
     # ── Batch analysis ────────────────────────────────────────────────────────
     test_reviews = [
         "The fabric is super soft but the size runs really small. Color is beautiful!",
@@ -474,6 +618,9 @@ if __name__ == "__main__":
         "The fabric is not soft at all, feels rough and cheap.",
         "Doesn't fit well even though I ordered my usual size.",
         "Not overpriced for what you get — actually great value.",
+        # Previously broken cases from CSV
+        "not at all what it looks like or is described as. sadly will be returning",
+        "do not buy. i'm very upset i have to pay the return fee since i ordered this.",
     ]
 
     print("=" * 60)

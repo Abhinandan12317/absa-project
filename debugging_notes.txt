@@ -1,0 +1,233 @@
+﻿=====================================================================
+  DEBUGGING NOTES - ABSA Sentiment Model
+  Date: 11 October 2026
+  Project: Clothing Review Sentiment Analyzer (ABSA)
+  File Affected: src/absa/absa_pipeline.py
+=====================================================================
+
+-- Background --
+
+So I was going through the history of predictions from the CSV file
+(absa_results.csv) and I noticed something weird. A lot of reviews
+that are clearly negative are being predicted as NEUTRAL. Like,
+reviews that literally say "do not buy" or "sadly will be returning"
+or "i was so disappointed" are coming out as NEUTRAL. That's obviously
+wrong.
+
+I decided to sit down and figure out what's going wrong.
+
+
+-- What I Found (Bug 1) --
+
+Okay so the first thing I noticed was that for some reviews, no
+"aspects" were being detected. Aspects are things like SIZE, FABRIC,
+COLOR etc. If none of those are mentioned in the review, the code
+skips the rule-based check entirely and just sends the text straight
+to the DistilBERT model.
+
+The problem is DistilBERT sometimes returns NEUTRAL on short or
+angry-sounding sentences that don't have obvious clothing keywords.
+And the rule-based system (which checks for words like "do not buy",
+"returning", "disappointed") is never even called for these reviews.
+
+Example:
+  "not at all what it looks like or is described as. sadly will be
+   returning"
+  --> No aspect keywords detected --> skip rules --> DistilBERT --> NEUTRAL
+  --> WRONG. Should be NEGATIVE.
+
+The fix: Before falling back to DistilBERT, I added a check that
+scans the text against the GENERIC_NEGATIVE and GENERIC_POSITIVE word
+lists directly. If there are more negative hits than positive, mark
+it as NEGATIVE. Same logic for POSITIVE. Only if it is still unclear,
+then let DistilBERT decide.
+
+
+-- What I Found (Bug 2) --
+
+This one was really tricky and took me a while to understand.
+
+There is a function called is_phrase_negated() that checks if a keyword
+is being negated by words like "not", "don't", "never" etc. The idea
+is that "not soft" should flip the sentiment from positive to negative.
+
+But I found a bug in how it works. It was building the "negation window"
+(the list of words that are marked as negated) from ALL negation words
+in the sentence -- including ones that are INSIDE the phrase itself.
+
+So for the phrase "do not buy":
+  - "not" is at position 1 inside the phrase
+  - "not" was marking the word "buy" (position 2) as negated
+  - Then the function sees "buy" is negated and thinks the ENTIRE
+    phrase "do not buy" is externally negated
+  - So it was treating "do not buy" as if it meant something POSITIVE
+  - That is completely wrong.
+
+The fix: Changed the function so it only looks at negation words that
+appear BEFORE the start of the phrase. If the negation is coming from
+inside the phrase itself, ignore it.
+
+
+-- What I Found (Bug 3) --
+
+When multiple aspects are found in a review, the overall sentiment is
+decided by majority vote. Like if 2 aspects are POSITIVE and 1 is
+NEGATIVE, overall = POSITIVE.
+
+But when there is a tie (like 1 POSITIVE and 1 NEGATIVE), the old
+code was defaulting to NEUTRAL. That does not make sense. A review
+that has equal positive and negative signals is probably more of a
+negative experience, not neutral.
+
+Also the logic had another issue -- when there was only 1 NEGATIVE
+aspect and the rest were NEUTRAL, it was not correctly picking NEGATIVE.
+The condition written was checking both (neg > pos AND neg > neu) at
+the same time which meant it was too strict.
+
+The fix: Rewrote the overall sentiment logic more cleanly:
+  - If no NEGATIVE and no POSITIVE aspects -> NEUTRAL
+  - If only NEGATIVE aspects -> NEGATIVE
+  - If only POSITIVE aspects -> POSITIVE
+  - If NEGATIVE > POSITIVE -> NEGATIVE
+  - If POSITIVE > NEGATIVE -> POSITIVE
+  - If tied -> NEGATIVE (negative signal wins on a tie)
+
+
+-- What I Found (Bug 4) --
+
+I tested with this review:
+  "The fabric is super soft but the size runs really small. Color is
+   beautiful!"
+
+And SIZE was coming out as NEUTRAL even though it very clearly says
+"runs really small" which is negative.
+
+After some digging I figured out why. The rule-based system was looking
+for the exact phrase "runs small" using a simple word match. But the
+review says "runs REALLY small" -- there is an adverb in between.
+
+The regex pattern was something like:
+  \bruns small\b
+
+Which obviously will not match "runs really small". So SIZE got no
+rule hit, fell through to DistilBERT, and on that mixed sentence
+(soft but small) it returned NEUTRAL.
+
+The fix: Added a fuzzy phrase matching system. Instead of looking for
+exact consecutive words, the new matcher allows up to 2 "intensifier"
+words (really, very, so, extremely, incredibly, super, etc.) between
+the words of a phrase.
+
+So now "runs small" matches:
+  - "runs small"           (exact, as before)
+  - "runs really small"    (with one intensifier)
+  - "runs very small"      (with one intensifier)
+  - "runs way too small"   (with two intensifiers)
+
+I also had to update the negation check to work with this fuzzy match.
+The old negation checker was working at the word-index level, which
+does not line up when the phrase spans more words than expected due to
+intensifiers. So I rewrote it to work at the character position level
+instead -- basically just check what words appear before the start of
+the matched text.
+
+
+-- What I Added to the Negative Word List (Bug related) --
+
+I also noticed the GENERIC_NEGATIVE word list was missing a lot of
+common phrases that people use in negative reviews. Added things like:
+  - "complaint", "complaints"
+  - "upset", "sadly"
+  - "disaster", "disastrous"
+  - "returning", "sending back", "going back", "sent back", "took back"
+  - "refund"
+  - "regret", "regretted"
+  - "not happy", "very unhappy"
+  - "let down", "not impressed", "unimpressed"
+  - "do not recommend", "don't recommend"
+  - "can't recommend", "cannot recommend"
+  - "will not buy", "would not buy"
+  - "rip off", "ripoff"
+  - "fell short", "mistake"
+  - "wasted", "waste of money"
+  - "misleading", "misrepresented"
+  - "nothing like", "looks nothing"
+  - "not what" (as in "not what I expected")
+  - "cheaply made", "poor quality", "bad quality"
+
+
+-- Summary of Changes --
+
+File changed: src/absa/absa_pipeline.py
+
+1. GENERIC_NEGATIVE list expanded with ~30 more negative phrases
+   that were commonly appearing in real user reviews but not being
+   caught.
+
+2. is_phrase_negated() fixed so that negation words inside a phrase
+   do not accidentally make the whole phrase look like it is externally
+   negated. Now only checks words that come BEFORE the phrase.
+
+3. New function _phrase_match() added. Does fuzzy phrase matching
+   that allows intensifier adverbs between words. Works for all
+   multi-word phrases in ASPECT_NEGATIVE_WORDS and ASPECT_POSITIVE_WORDS.
+
+4. New function is_match_externally_negated() added. Works with the
+   new fuzzy matcher to correctly detect if a matched phrase is being
+   negated by something before it.
+
+5. rule_based_sentiment() updated to use _phrase_match() and
+   is_match_externally_negated() instead of the old exact-match approach.
+
+6. analyze_review() updated: when no aspects detected, now checks
+   GENERIC_NEGATIVE/POSITIVE word lists directly (using the new
+   fuzzy matcher) before falling back to DistilBERT.
+
+7. Overall sentiment tie-breaking logic completely rewritten. Cleaner
+   conditions, and ties between POSITIVE and NEGATIVE now go to
+   NEGATIVE instead of defaulting to NEUTRAL.
+
+
+-- Test Cases I Used to Verify --
+
+These were the main ones I checked:
+
+  "not at all what it looks like or is described as. sadly will be returning"
+  Expected: NEGATIVE (was: NEUTRAL) --> FIXED
+
+  "do not buy. i'm very upset i have to pay the .95 return fee"
+  Expected: NEGATIVE (was: NEUTRAL) --> FIXED
+
+  "i had been drooling over this top for awhile and was so disappointed!"
+  Expected: NEGATIVE (was: NEUTRAL) --> FIXED
+
+  "obviously they are going back tomorrow. i'm very disappointed"
+  Expected: NEGATIVE (was: NEUTRAL) --> FIXED
+
+  "The fabric is super soft but the size runs really small. Color is beautiful!"
+  Expected: SIZE=NEGATIVE (was: SIZE=NEUTRAL) --> FIXED
+
+  "love it! amazing quality and would highly recommend."
+  Expected: POSITIVE (was: POSITIVE) --> still correct, no regression
+
+  "The fabric is beautiful but runs terribly small."
+  Expected: NEGATIVE (was: NEUTRAL due to tie) --> FIXED
+
+
+-- Notes for future --
+
+- The model still depends heavily on whether aspects are detected or
+  not. If someone writes a very unusual negative review with no
+  clothing-related keywords, DistilBERT is the last line of defense.
+  That is probably fine for now.
+
+- The fuzzy phrase matching allows UP TO 2 intensifiers between words.
+  That seems like a reasonable limit. Could revisit if needed.
+
+- The tie-breaking decision (ties go NEGATIVE) is debatable. But for
+  a clothing review app where catching negative reviews is more
+  important than catching positive ones, it seems like the right call.
+
+=====================================================================
+  End of Notes
+=====================================================================
