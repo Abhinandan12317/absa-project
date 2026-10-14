@@ -4,7 +4,13 @@ import { StatusIcon } from "./common/Icons";
 import { API_URL, MODEL_COLORS } from "../constants";
 
 const CLASS_LABELS = ["NEGATIVE", "NEUTRAL", "POSITIVE"];
-const METRICS = ["accuracy", "precision", "recall", "f1"];
+const METRICS = [
+  { key: "accuracy", label: "Accuracy" },
+  { key: "precision", label: "Weighted Precision" },
+  { key: "recall", label: "Weighted Recall" },
+  { key: "f1", label: "Weighted F1" },
+  { key: "macro_f1", label: "Macro F1" }
+];
 
 function ConfusionMatrix({ cm }) {
   if (!cm || cm.length === 0) return null;
@@ -69,8 +75,12 @@ export default function ModelComparison() {
       });
   }, []);
 
-  const getBestValue = (key) =>
-    models.length > 0 ? Math.max(...models.map(m => m[key] || 0)) : 0;
+  const getBestValue = (key) => {
+    const valid = models
+      .map(m => m[key])
+      .filter(v => v !== undefined && v !== null && !isNaN(v));
+    return valid.length > 0 ? Math.max(...valid) : 0;
+  };
 
   return (
     <div>
@@ -128,21 +138,23 @@ export default function ModelComparison() {
                   </div>
 
                   <div className="model-metrics-list">
-                    {METRICS.map(metric => {
-                      const isBest = model[metric] === getBestValue(metric);
+                    {METRICS.map(({ key, label }) => {
+                      const val = model[key];
+                      const hasVal = val !== undefined && val !== null && !isNaN(val);
+                      const isBest = hasVal && val === getBestValue(key);
                       return (
-                        <div key={metric} className="metric-bar-item">
+                        <div key={key} className="metric-bar-item">
                           <div className="metric-bar-header">
-                            <span className="metric-name">{metric}</span>
+                            <span className="metric-name">{label}</span>
                             <span className={`metric-val ${isBest ? "best" : ""}`} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                              {model[metric].toFixed(2)}% {isBest && <StatusIcon type="star" size={12} color="#10b981" />}
+                              {hasVal ? `${val.toFixed(2)}%` : "–"} {isBest && <StatusIcon type="star" size={12} color="#10b981" />}
                             </span>
                           </div>
                           <div className="metric-track">
                             <div
                               className="metric-bar-fill"
                               style={{
-                                width: `${Math.min(100, model[metric])}%`,
+                                width: `${hasVal ? Math.min(100, Math.max(0, val)) : 0}%`,
                                 background: isBest ? "#10b981" : brandCol,
                               }}
                             />
@@ -172,9 +184,9 @@ export default function ModelComparison() {
                 <thead>
                   <tr>
                     <th>Model</th>
-                    {METRICS.map(k => (
-                      <th key={k} style={{ textAlign: "right" }}>
-                        {k.toUpperCase()}
+                    {METRICS.map(({ key, label }) => (
+                      <th key={key} style={{ textAlign: "right" }}>
+                        {label}
                       </th>
                     ))}
                   </tr>
@@ -199,11 +211,13 @@ export default function ModelComparison() {
                             </span>
                           </div>
                         </td>
-                        {METRICS.map(metric => {
-                          const isBest = model[metric] === getBestValue(metric);
+                        {METRICS.map(({ key }) => {
+                          const val = model[key];
+                          const hasVal = val !== undefined && val !== null && !isNaN(val);
+                          const isBest = hasVal && val === getBestValue(key);
                           return (
                             <td
-                              key={metric}
+                              key={key}
                               style={{
                                 textAlign: "right",
                                 fontFamily: "var(--font-mono)",
@@ -213,7 +227,7 @@ export default function ModelComparison() {
                               }}
                             >
                               <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", justifyContent: "flex-end" }}>
-                                {model[metric].toFixed(2)}% {isBest ? <StatusIcon type="trophy" size={13} color="#059669" /> : ""}
+                                {hasVal ? `${val.toFixed(2)}%` : "–"} {isBest ? <StatusIcon type="trophy" size={13} color="#059669" /> : ""}
                               </span>
                             </td>
                           );

@@ -105,7 +105,9 @@ def get_available_departments():
 
 # ---------- model_metrics collection ----------
 def save_model_metrics(model_name: str, accuracy: float, precision: float,
-                       recall: float, f1: float, confusion_matrix: list = None):
+                       recall: float, f1: float, confusion_matrix: list = None,
+                       macro_precision: float = None, macro_recall: float = None,
+                       macro_f1: float = None):
     """Save evaluation metrics for a model."""
     db = get_database()
     # Upsert — update if exists, insert if not
@@ -118,6 +120,9 @@ def save_model_metrics(model_name: str, accuracy: float, precision: float,
             "recall": recall,
             "f1": f1,
             "confusion_matrix": confusion_matrix,
+            "macro_precision": macro_precision,
+            "macro_recall": macro_recall,
+            "macro_f1": macro_f1,
             "saved_at": datetime.utcnow()
         }},
         upsert=True
@@ -131,19 +136,11 @@ def get_all_model_metrics():
 
 def seed_model_metrics():
     """
-    Seed the 4 model results from your existing JSON reports.
-    Call this once to populate model_metrics collection.
+    Seed/update the 4 model results from JSON reports.
+    Upserts into model_metrics collection.
     """
-    models = [
-        {"model_name": "Logistic Regression", "accuracy": 81.87,
-         "precision": 82.1, "recall": 81.9, "f1": 81.8},
-        {"model_name": "SVM",                 "accuracy": 82.31,
-         "precision": 82.5, "recall": 82.3, "f1": 82.2},
-        {"model_name": "CNN-BiLSTM",          "accuracy": 82.46,
-         "precision": 82.7, "recall": 82.5, "f1": 82.4},
-        {"model_name": "DistilBERT",          "accuracy": 85.27,
-         "precision": 85.4, "recall": 85.3, "f1": 85.2},
-    ]
+    from src.evaluation.evaluator import build_model_metrics
+    models = build_model_metrics()
     for m in models:
         save_model_metrics(**m)
     logger.info("Model metrics seeded to MongoDB")

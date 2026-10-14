@@ -138,22 +138,24 @@ def detect_aspects(text: str) -> Dict[str, List[str]]:
 
 def get_aspect_sentences(text: str, aspect: str) -> List[str]:
     """
-    Extract sentences from review that mention a specific aspect.
+    Extract sentences/clauses from review that mention a specific aspect.
+    Segments by sentence terminals (.!?) and contrastive words (but, however, etc.)
+    so opposite sentiments are isolated to their respective aspects.
     """
     keywords = ASPECT_KEYWORDS.get(aspect, [])
-    sentences = re.split(r'[.!?]+', text)
+    raw_clauses = re.split(r'[.!?]+|\b(?:but|however|although|yet|though|except)\b|[;]+', text, flags=re.IGNORECASE)
     relevant = []
 
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:
+    for clause in raw_clauses:
+        clause = re.sub(r'^[\s,;:-]+|[\s,;:-]+$', '', clause).strip()
+        if not clause:
             continue
-        sentence_lower = sentence.lower()
+        clause_lower = clause.lower()
         for keyword in keywords:
             pattern = r'\b' + re.escape(keyword) + r'\b'
-            if re.search(pattern, sentence_lower):
-                relevant.append(sentence)
-                break  # avoid duplicates per sentence
+            if re.search(pattern, clause_lower):
+                relevant.append(clause)
+                break  # avoid duplicates per clause
 
     return relevant
 

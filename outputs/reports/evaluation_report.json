@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-19T18:00:50.688086",
+  "generated_at": "2026-10-14T22:35:05.062566",
   "dataset": "Women's Clothing E-Commerce Reviews (Kaggle)",
   "total_records": 23486,
   "test_split": "20%",
@@ -11,9 +11,12 @@
   "models": {
     "Logistic Regression": {
       "accuracy": 81.87,
-      "precision_macro": 77.94,
-      "recall_macro": 81.87,
-      "f1_macro": 78.52,
+      "precision_weighted": 77.94,
+      "recall_weighted": 81.87,
+      "f1_weighted": 78.52,
+      "macro_precision": 64.77,
+      "macro_recall": 51.48,
+      "macro_f1": 55.03,
       "test_samples": 4528,
       "correct": 3707,
       "incorrect": 821,
@@ -69,9 +72,12 @@
     },
     "SVM": {
       "accuracy": 82.31,
-      "precision_macro": 79.24,
-      "recall_macro": 82.31,
-      "f1_macro": 80.23,
+      "precision_weighted": 79.24,
+      "recall_weighted": 82.31,
+      "f1_weighted": 80.23,
+      "macro_precision": 63.43,
+      "macro_recall": 56.09,
+      "macro_f1": 58.61,
       "test_samples": 4528,
       "correct": 3727,
       "incorrect": 801,
@@ -127,9 +133,12 @@
     },
     "DistilBERT": {
       "accuracy": 85.27,
-      "precision_macro": 84.88,
-      "recall_macro": 85.27,
-      "f1_macro": 85.07,
+      "precision_weighted": 84.88,
+      "recall_weighted": 85.27,
+      "f1_weighted": 85.07,
+      "macro_precision": 68.14,
+      "macro_recall": 67.41,
+      "macro_f1": 67.76,
       "test_samples": 4528,
       "correct": 3861,
       "incorrect": 667,
@@ -185,9 +194,12 @@
     },
     "CNN-BiLSTM": {
       "accuracy": 82.46,
-      "precision_macro": 80.13,
-      "recall_macro": 82.46,
-      "f1_macro": 81.07,
+      "precision_weighted": 80.13,
+      "recall_weighted": 82.46,
+      "f1_weighted": 81.07,
+      "macro_precision": 62.18,
+      "macro_recall": 57.67,
+      "macro_f1": 59.46,
       "test_samples": 4528,
       "correct": 3734,
       "incorrect": 794,
@@ -247,25 +259,29 @@
       "rank": 1,
       "model": "DistilBERT",
       "accuracy": 85.27,
-      "f1": 85.07
+      "f1_weighted": 85.07,
+      "macro_f1": 67.76
     },
     {
       "rank": 2,
       "model": "CNN-BiLSTM",
       "accuracy": 82.46,
-      "f1": 81.07
+      "f1_weighted": 81.07,
+      "macro_f1": 59.46
     },
     {
       "rank": 3,
       "model": "SVM",
       "accuracy": 82.31,
-      "f1": 80.23
+      "f1_weighted": 80.23,
+      "macro_f1": 58.61
     },
     {
       "rank": 4,
       "model": "Logistic Regression",
       "accuracy": 81.87,
-      "f1": 78.52
+      "f1_weighted": 78.52,
+      "macro_f1": 55.03
     }
   ],
   "best_model": "DistilBERT"

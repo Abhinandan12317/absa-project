@@ -223,8 +223,8 @@ def rule_based_sentiment(text: str, aspect: str):
     text = text.replace("\u2019", "'").replace("\u2018", "'")
     text_lower = text.lower()
 
-    neg_words = ASPECT_NEGATIVE_WORDS.get(aspect, []) + GENERIC_NEGATIVE
-    pos_words = ASPECT_POSITIVE_WORDS.get(aspect, []) + GENERIC_POSITIVE
+    neg_words = list(dict.fromkeys(ASPECT_NEGATIVE_WORDS.get(aspect, []) + GENERIC_NEGATIVE))
+    pos_words = list(dict.fromkeys(ASPECT_POSITIVE_WORDS.get(aspect, []) + GENERIC_POSITIVE))
 
     # Collect multi-word negative phrases present in text (for overlap protection)
     # Uses fuzzy matching so "not really as shown" still activates "not as shown"
@@ -360,6 +360,45 @@ def aggregate_sentence_sentiments(sentence_results: List[Dict]) -> Dict[str, Any
     }
 
 
+def derive_overall_sentiment(aspect_sentiments: dict) -> str:
+    """
+    Derives overall sentiment from aspect votes.
+    Counts only POSITIVE and NEGATIVE aspects; NEUTRAL aspects are ignored unless
+    there are no POS/NEG aspects.
+      - No POS and no NEG -> "NEUTRAL"
+      - Only POS -> "POSITIVE"
+      - Only NEG -> "NEGATIVE"
+      - More NEG than POS -> "NEGATIVE"
+      - More POS than NEG -> "POSITIVE"
+      - Equal (tie between POS and NEG) -> "NEGATIVE"
+    """
+    if not aspect_sentiments:
+        return "NEUTRAL"
+
+    sentiments = []
+    for v in aspect_sentiments.values():
+        if isinstance(v, dict):
+            sentiments.append(v.get("sentiment", "NEUTRAL"))
+        else:
+            sentiments.append(str(v))
+
+    pos = sentiments.count("POSITIVE")
+    neg = sentiments.count("NEGATIVE")
+
+    if neg == 0 and pos == 0:
+        return "NEUTRAL"
+    elif neg == 0:
+        return "POSITIVE"
+    elif pos == 0:
+        return "NEGATIVE"
+    elif neg > pos:
+        return "NEGATIVE"
+    elif pos > neg:
+        return "POSITIVE"
+    else:
+        return "NEUTRAL"
+
+
 # ── Analyze single review ─────────────────────────────────────────────────────
 def analyze_review(review_text: str,
                    distilbert=None, tokenizer=None, device=None,
@@ -452,28 +491,8 @@ def analyze_review(review_text: str,
             "votes":          aggregated.get("votes", {})
         }
 
-    # Derive overall_sentiment from aspect majority vote
-    sentiments = [v["sentiment"] for v in results["aspect_sentiments"].values()]
-    pos = sentiments.count("POSITIVE")
-    neg = sentiments.count("NEGATIVE")
-    neu = sentiments.count("NEUTRAL")
-    total = len(sentiments)
-
-    if neg == 0 and pos == 0:
-        # Only NEUTRAL aspects found
-        results["overall_sentiment"] = "NEUTRAL"
-    elif neg == 0:
-        results["overall_sentiment"] = "POSITIVE"
-    elif pos == 0:
-        results["overall_sentiment"] = "NEGATIVE"
-    elif neg > pos:
-        results["overall_sentiment"] = "NEGATIVE"
-    elif pos > neg:
-        results["overall_sentiment"] = "POSITIVE"
-    else:
-        # ── FIX: Tie between POSITIVE and NEGATIVE → prefer NEGATIVE ──
-        # A review with equally negative signals is more likely a negative experience.
-        results["overall_sentiment"] = "NEGATIVE"
+    # Derive overall_sentiment from aspect votes
+    results["overall_sentiment"] = derive_overall_sentiment(results["aspect_sentiments"])
 
     return results
 

@@ -1,7 +1,15 @@
 import json
 import os
+import sys
 import numpy as np
 from datetime import datetime
+
+# Ensure utf-8 output on Windows
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -50,6 +58,36 @@ def analyze_confusion_matrix(cm, class_names=["NEGATIVE", "NEUTRAL", "POSITIVE"]
 
     return per_class
 
+# ── Build model metrics for DB / API ─────────────────────────────────────────
+def build_model_metrics() -> list:
+    """
+    Reads the 4 JSONs and returns, per model:
+    model_name, accuracy, precision, recall, f1 (weighted values, in percent, 2 decimals),
+    plus macro_precision, macro_recall, macro_f1 and confusion_matrix.
+    """
+    all_results = load_model_results()
+    class_names = ["NEGATIVE", "NEUTRAL", "POSITIVE"]
+    metrics_list = []
+    for model_name, data in all_results.items():
+        cm = data["confusion_matrix"]
+        per_class = analyze_confusion_matrix(cm, class_names)
+        macro_precision = round(float(np.mean([v["precision"] for v in per_class.values()])) * 100, 2)
+        macro_recall    = round(float(np.mean([v["recall"] for v in per_class.values()])) * 100, 2)
+        macro_f1        = round(float(np.mean([v["f1"] for v in per_class.values()])) * 100, 2)
+
+        metrics_list.append({
+            "model_name":       model_name,
+            "accuracy":         round(data["accuracy"]  * 100, 2),
+            "precision":        round(data["precision"] * 100, 2),
+            "recall":           round(data["recall"]    * 100, 2),
+            "f1":               round(data["f1_score"]  * 100, 2),
+            "macro_precision":  macro_precision,
+            "macro_recall":     macro_recall,
+            "macro_f1":         macro_f1,
+            "confusion_matrix": cm,
+        })
+    return metrics_list
+
 # ── Generate full evaluation report ──────────────────────────────────────────
 def generate_evaluation_report():
     print("=" * 60)
@@ -75,16 +113,23 @@ def generate_evaluation_report():
         test_total  = int(cm_array.sum())
         correct     = int(np.trace(cm_array))
 
+        macro_precision = round(float(np.mean([v["precision"] for v in per_class.values()])) * 100, 2)
+        macro_recall    = round(float(np.mean([v["recall"] for v in per_class.values()])) * 100, 2)
+        macro_f1        = round(float(np.mean([v["f1"] for v in per_class.values()])) * 100, 2)
+
         model_report = {
-            "accuracy":         round(data["accuracy"]  * 100, 2),
-            "precision_macro":  round(data["precision"] * 100, 2),
-            "recall_macro":     round(data["recall"]    * 100, 2),
-            "f1_macro":         round(data["f1_score"]  * 100, 2),
-            "test_samples":     test_total,
-            "correct":          correct,
-            "incorrect":        test_total - correct,
-            "confusion_matrix": cm,
-            "per_class":        per_class,
+            "accuracy":           round(data["accuracy"]  * 100, 2),
+            "precision_weighted": round(data["precision"] * 100, 2),
+            "recall_weighted":    round(data["recall"]    * 100, 2),
+            "f1_weighted":        round(data["f1_score"]  * 100, 2),
+            "macro_precision":    macro_precision,
+            "macro_recall":       macro_recall,
+            "macro_f1":           macro_f1,
+            "test_samples":       test_total,
+            "correct":            correct,
+            "incorrect":          test_total - correct,
+            "confusion_matrix":   cm,
+            "per_class":          per_class,
         }
 
         report["models"][model_name] = model_report
@@ -93,10 +138,13 @@ def generate_evaluation_report():
         print(f"\n{'─'*50}")
         print(f"  {model_name}")
         print(f"{'─'*50}")
-        print(f"  Accuracy  : {model_report['accuracy']}%")
-        print(f"  Precision : {model_report['precision_macro']}%")
-        print(f"  Recall    : {model_report['recall_macro']}%")
-        print(f"  F1 Score  : {model_report['f1_macro']}%")
+        print(f"  Accuracy           : {model_report['accuracy']}%")
+        print(f"  Weighted Precision : {model_report['precision_weighted']}%")
+        print(f"  Weighted Recall    : {model_report['recall_weighted']}%")
+        print(f"  Weighted F1 Score  : {model_report['f1_weighted']}%")
+        print(f"  Macro Precision    : {model_report['macro_precision']}%")
+        print(f"  Macro Recall       : {model_report['macro_recall']}%")
+        print(f"  Macro F1 Score     : {model_report['macro_f1']}%")
         print(f"  Test Samples: {test_total} | Correct: {correct} | Wrong: {test_total - correct}")
         print(f"\n  Per-Class Breakdown:")
         for cls, stats in per_class.items():
@@ -107,17 +155,17 @@ def generate_evaluation_report():
             print(f"  {class_names[i]:10s} {row[0]:6d} {row[1]:6d} {row[2]:6d}")
 
     # ── Comparison summary ────────────────────────────────────────────────────
-    print(f"\n{'='*60}")
+    print(f"\n{'='*75}")
     print("  MODEL COMPARISON SUMMARY")
-    print(f"{'='*60}")
-    print(f"  {'Model':<22} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} {'F1':>10}")
-    print(f"  {'─'*22} {'─'*10} {'─'*10} {'─'*10} {'─'*10}")
+    print(f"{'='*75}")
+    print(f"  {'Model':<22} {'Accuracy':>10} {'W-Prec':>10} {'W-Rec':>10} {'W-F1':>10} {'Macro F1':>10}")
+    print(f"  {'─'*22} {'─'*10} {'─'*10} {'─'*10} {'─'*10} {'─'*10}")
 
     best_model = max(report["models"].items(), key=lambda x: x[1]["accuracy"])
 
     for model_name, stats in report["models"].items():
         marker = " ← BEST" if model_name == best_model[0] else ""
-        print(f"  {model_name:<22} {stats['accuracy']:>9.2f}% {stats['precision_macro']:>9.2f}% {stats['recall_macro']:>9.2f}% {stats['f1_macro']:>9.2f}%{marker}")
+        print(f"  {model_name:<22} {stats['accuracy']:>9.2f}% {stats['precision_weighted']:>9.2f}% {stats['recall_weighted']:>9.2f}% {stats['f1_weighted']:>9.2f}% {stats['macro_f1']:>9.2f}%{marker}")
 
     print(f"\n  Best Model: {best_model[0]} ({best_model[1]['accuracy']}% accuracy)")
 
@@ -128,7 +176,8 @@ def generate_evaluation_report():
             "rank": i + 1,
             "model": name,
             "accuracy": stats["accuracy"],
-            "f1": stats["f1_macro"]
+            "f1_weighted": stats["f1_weighted"],
+            "macro_f1": stats["macro_f1"]
         }
         for i, (name, stats) in enumerate(ranked)
     ]
@@ -159,10 +208,13 @@ def sync_metrics_to_mongodb(report):
             save_model_metrics(
                 model_name=model_name,
                 accuracy=stats["accuracy"],
-                precision=stats["precision_macro"],
-                recall=stats["recall_macro"],
-                f1=stats["f1_macro"],
-                confusion_matrix=stats["confusion_matrix"]
+                precision=stats["precision_weighted"],
+                recall=stats["recall_weighted"],
+                f1=stats["f1_weighted"],
+                confusion_matrix=stats["confusion_matrix"],
+                macro_precision=stats.get("macro_precision"),
+                macro_recall=stats.get("macro_recall"),
+                macro_f1=stats.get("macro_f1")
             )
         print("✅ MongoDB model_metrics collection updated!")
     except Exception as e:

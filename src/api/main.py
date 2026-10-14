@@ -68,14 +68,12 @@ async def load_models():
     except Exception as e:
         print(f"DistilBERT failed: {e} — using LR as primary ⚠️")
 
-    # Seed model metrics if MongoDB collection is empty
+    # Always sync model metrics from JSON reports on startup
     try:
-        db = get_database()
-        if db["model_metrics"].count_documents({}) == 0:
-            seed_model_metrics()
-            print("Model metrics seeded to MongoDB ✅")
+        seed_model_metrics()
+        logger.info("Model metrics synced to MongoDB ✅")
     except Exception as e:
-        print(f"MongoDB seed skipped: {e} ⚠️")
+        logger.warning(f"MongoDB model metrics sync failed: {e} ⚠️")
 
 
 # ── Request/Response schemas ─────────────────────────────────────────────────
@@ -155,21 +153,6 @@ def analyze_batch_reviews(request: BatchRequest):
             vectorizer=lr_vectorizer
         )
         summary = get_aspect_summary(results)
-
-        for r in results:
-            aspects = r.get("aspect_sentiments", {})
-            if aspects:
-                sentiments = [v["sentiment"] for v in aspects.values()]
-                pos = sentiments.count("POSITIVE")
-                neg = sentiments.count("NEGATIVE")
-                if pos > neg:
-                    r["overall_sentiment"] = "POSITIVE"
-                elif neg > pos:
-                    r["overall_sentiment"] = "NEGATIVE"
-                else:
-                    r["overall_sentiment"] = "NEUTRAL"
-            else:
-                r["overall_sentiment"] = "NEUTRAL"
 
         batch_id = str(uuid.uuid4())
         for i, (review_text, result) in enumerate(zip(request.reviews, results)):
